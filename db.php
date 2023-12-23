@@ -1,7 +1,7 @@
 <?php
 namespace app\db;
 use app\db\configDB;
-
+use stdClass;
 
 class Db
 {
@@ -15,6 +15,7 @@ class Db
     function __construct($table)
     {
         if ($this->validInjection($table)){
+
             //Pega configuração do PDO
             $this->config = new configDB;
             $this->pdo = $this->config->getPDO();
@@ -28,9 +29,30 @@ class Db
             //Transforma as colunas da tabela em uma array
             $this->columns = (array)$this->object;
             $this->columns = array_keys($this->columns);
-       }
+        }
         else 
            return false;
+    }
+
+    public function transaction(){
+        if ($this->pdo->beginTransaction())
+            return True;
+        else 
+            $this->error[] = "Erro: Não foi possivel iniciar a transação";
+    }
+
+    public function commit(){
+        if ($this->pdo->commit())
+            return True;
+        else 
+            $this->error[] = "Erro: Não foi possivel finalizar a transação";
+    }
+
+    public function rollback(){
+        if ($this->pdo->rollback())
+            return True;
+        else 
+            $this->error[] = "Erro: Não foi possivel desafazer a transação";
     }
 
     //Retorna o ultimo ID da tabela
@@ -65,8 +87,7 @@ class Db
     //Pega as colunas da tabela e tranforma em Objeto
     private function getObjectTable()
     {
-
-        $rows = (array)$this->selectInstruction('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END;');
+        $rows = (array)$this->selectInstruction('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
         if ($rows) {
             $object = new \stdClass;
             foreach ($rows as $row) {
@@ -142,38 +163,80 @@ class Db
     }
 
     //Retorna um array com todos os registro da tabela
-    public function selectAll()
+    public function selectAll(Array $filters = array(),$order="")
     {
-        $object = $this->selectInstruction("select * from " . $this->table,true);
-
-        return $object;
-    }
-
-    //retorna um array com registros referentes a essas colunas
-    public function selectColumns(Array $columns)
-    {
-        $sql = "select ";
-        foreach ($columns as $column){
-            $sql .= $column.",";  
+        $sql = "SELECT * FROM " . $this->table;
+        if ($filters){
+            $sql .= " WHERE ";
+            $i = 1;
+            foreach ($filters as $filter){
+                if ($i == 1){
+                    $sql .= substr($filter,4);
+                    $i++;
+                }else{
+                    $sql .= $filter;
+                }
+            }    
         }
-        $sql = substr($sql, 0, -1);
-        $sql .= " from ".$this->table;    
+        $sql .= $order;
+        
         $object = $this->selectInstruction($sql,true);
 
         return $object;
     }
 
+    //retorna um array com registros referentes a essas colunas
+    public function selectColumns(Array $columns, Array $filters = array(), $order="")
+    {
+        $sql = "SELECT ";
+        foreach ($columns as $column){
+            $sql .= $column.",";  
+        }
+        $sql = substr($sql, 0, -1);
+        $sql .= " FROM ".$this->table;
+        if ($filters){
+            $sql .= "WHERE ";
+            $i = 1;
+            foreach ($filters as $filter){
+                if ($i == 1){
+                    $sql .= substr($filter,4);
+                    $i++;
+                }else{
+                    $sql .= $filter;
+                }
+            }    
+        }
+        $sql .= $order;
+        $object = $this->selectInstruction($sql,true);
+
+        return $object;
+    }
+
+    public function getFilter($column,$condition,$value,$operator="AND"){
+        if ($this->validInjection($value)){  
+            if (is_string($value) && $value != "null")
+                return " ".$operator." ".$column." ".$condition." '".$value."' ";
+            elseif (is_int($value) || is_float($value) || $value == "null")
+                return " ".$operator." ".$column." ".$condition." ".$value." ";  
+        }
+        return "";
+    }
+
+    public function getOrder($column,$order="DESC"){
+        return " ORDER by ".$column." ".$order;
+    }
+
     //faz um select com as colunas e os valores passados
-    public function selectByValues(Array $columns,array $values,$all=false){
+    public function selectByValues(Array $columns,array $values,$all=false,Array $filters = array(),$order = ""){
         if (count($columns) == count($values)){
             $conditions = [];
-            $sql = "select ";
+            $sql = "SELECT ";
             $i = 0;
             foreach ($columns as $column){
                 if (!$all)
                     $sql .= $column.",";
                   
-                $value = $values[$i];
+                $value = trim($values[$i]);
 
                 if ($this->validInjection($value)){  
                     if (is_string($value) && $value != "null")
@@ -189,12 +252,16 @@ class Db
             if ($all == true){
                 $sql .= " *";
             }
-            $sql .= " from ".$this->table;
-            $sql .= " where ";
+            $sql .= " FROM ".$this->table;
+            $sql .= " WHERE ";
             foreach ($conditions as $condition){
                 $sql .= $condition;
             }
             $sql = substr($sql, 0, -4);
+            foreach ($filters as $filter){
+                $sql .= $filter;
+            }
+            $sql .= $order; 
 
             $object = $this->selectInstruction($sql,true);
 
@@ -218,6 +285,7 @@ class Db
                     $sql_instruction = substr($sql_instruction, 0, -1);
                     $sql_instruction .= ") VALUES (";
                     foreach ($values as $data) {
+                        $data = trim($data); 
                         if ($this->validInjection($data)){
                             if (is_string($data) && $data != "null")
                                 $sql_instruction .= "'" . $data . "',";
@@ -233,6 +301,7 @@ class Db
 
                     $sql_instruction = "UPDATE " . $this->table . " SET ";
                     foreach ($values as $key => $data) {
+                        $data = trim($data);
                         if ($this->validInjection($data)){
                             if (is_string($data))
                                 $sql_instruction .= $key . '="' . $data . '",';
@@ -273,25 +342,31 @@ class Db
 
     //valida se foi feito tentatiava de sql injection
     function validInjection($value) {
+
         $inject=0;
-        $badword = array(" select","select "," insert"," update","update "," delete","delete "," drop","drop "," destroy","destroy ");
-        $charvalidos = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ÁÀÃÂÇÉÈÊÍÌÓÒÔÕÚÙÜÑáàãâçéèêíìóòôõúùüñ!?@#$%&(){}[]:;,.-_ ";
 
-        for ($i=0;$i<sizeof($badword);$i++){
-            if (substr_count($value,$badword[$i])!=0){
-                $inject=1;
+        $value = trim($value);
+
+        if ($value){
+            $badword = array(" select","select "," insert"," update","update "," delete","delete "," drop","drop "," destroy","destroy ");
+            $charvalidos = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ÁÀÃÂÇÉÈÊÍÌÓÒÔÕÚÙÜÑáàãâçéèêíìóòôõúùüñ!?@#$%&(){}[]:;,.-_ ";
+
+            for ($i=0;$i<sizeof($badword);$i++){
+                if (substr_count($value,$badword[$i])!=0){
+                    $inject=1;
+                }
             }
-        }
 
-        for ($i=0;$i<strlen($value);$i++){
-            $char = substr($value,$i,1);
-            if (substr_count($charvalidos,$char)==0) {
-                $inject=1;
+            for ($i=0;$i<strlen($value);$i++){
+                $char = substr($value,$i,1);
+                if (substr_count($charvalidos,$char)==0) {
+                    $inject=1;
+                }
             }
-        }
 
-        if ($inject > 0)
-            $this->error[] = 'Erro: Indentificado tentativa de SQL Injection';
+            if ($inject > 0)
+                $this->error[] = 'Erro: Indentificado tentativa de SQL Injection';
+        }
 
         return($inject == 0);
     }
