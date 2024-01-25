@@ -212,7 +212,7 @@ class Db
             $sql .= $join;
         }
         if ($this->filters){
-            $sql .= "WHERE ";
+            $sql .= " WHERE ";
             $i = 1;
             foreach ($this->filters as $filter){
                 if ($i == 1){
@@ -267,7 +267,12 @@ class Db
             }
             $sql = substr($sql, 0, -4);
             foreach ($this->filters as $filter){
-                $sql .= $filter;
+                if ($i == 1){
+                    $sql .= substr($filter,4);
+                    $i++;
+                }else{
+                    $sql .= $filter;
+                }
             }
             foreach ($this->propertys as $property){
                 $sql .= $property;
@@ -368,6 +373,9 @@ class Db
                 $valuesBD = substr($valuesBD, 0, -1);
                 $sql_instruction .= $valuesBD;
                 $sql_instruction .= ");";
+                $sql = $this->pdo->prepare($sql_instruction);
+                $sql->execute();
+                return true;
             }
         } catch (\Exception $e) {
             $this->error[] = 'Erro: ' .  $e->getMessage();
@@ -395,16 +403,23 @@ class Db
     {
         try {
             if ($this->filters){
-                $sql = $this->pdo->prepare("DELETE FROM " . $this->table . " WHERE ");
+                $sql_instruction = "DELETE FROM " . $this->table . " WHERE ";
+                $i = 1;
                 foreach ($this->filters as $filter){
-                    $sql .= $filter;
+                    if ($i == 1){
+                        $sql_instruction .= substr($filter,4);
+                        $i++;
+                    }else{
+                        $sql_instruction .= $filter;
+                    }
                 }
+                $sql = $this->pdo->prepare($sql_instruction); 
                 $sql->execute();
                 $this->clean();
                 return true;
             }
             else 
-                $this->error[] = 'Erro: ID Invalido';
+                $this->error[] = 'Erro: Obrigatorio Uso de filtro';
             return false;
         } catch (\Exception $e) {
             $this->error[] = 'Erro: ' .  $e->getMessage();
