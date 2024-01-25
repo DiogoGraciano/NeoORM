@@ -1,6 +1,7 @@
 <?php
 namespace app\db;
 use app\db\configDB;
+use Exception;
 use stdClass;
 
 class Db
@@ -35,7 +36,7 @@ class Db
             $this->columns = array_keys($this->columns);
         }
         else 
-           return false;
+           throw new Exception("Tentativa de SQL Injection");
     }
 
     public function transaction(){
@@ -377,13 +378,14 @@ class Db
     public function delete($id)
     {
         try {
-            if ($this->validInjection($id)){
+            if ($id && $this->validInjection($id)){
                 $sql = $this->pdo->prepare("DELETE FROM " . $this->table . " WHERE " . $this->columns[0] . "=" . $id);
                 $sql->execute();
                 return true;
             }
             else 
-                return false;
+                $this->error[] = 'Erro: ID Invalido';
+            return false;
         } catch (\Exception $e) {
             $this->error[] = 'Erro: ' .  $e->getMessage();
         }
@@ -402,7 +404,8 @@ class Db
                 return true;
             }
             else 
-                return false;
+                $this->error[] = 'Erro: ID Invalido';
+            return false;
         } catch (\Exception $e) {
             $this->error[] = 'Erro: ' .  $e->getMessage();
         }
@@ -415,10 +418,14 @@ class Db
             elseif (is_int($value) || is_float($value) || $value == "null")
                 $this->filters[] = " ".$operator." ".$column." ".$condition." ".$value." ";  
         }
+
+        return $this;
     }
 
     public function addOrder($column,$order="DESC"){
         $this->propertys[] = " ORDER by ".$column." ".$order;
+
+        return $this;
     }
 
     public function addLimit($limitIni,$limitFim=""){
@@ -426,14 +433,20 @@ class Db
             $this->propertys[] = " LIMIT ".$limitIni.",".$limitFim;
         else 
             $this->propertys[] = " LIMIT ".$limitIni;
+
+        return $this;
     }
 
     public function addGroup($columns){
         $this->propertys[] = " GROUP by ".$columns;
+
+        return $this;
     }
 
     public function addJoin($type,$table,$condition_from,$condition_to){
         $this->joins[] = " ".$type." JOIN ".$table." on ".$condition_from." = ".$condition_to;
+
+        return $this;
     }
 
     private function clean(){
