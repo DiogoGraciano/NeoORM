@@ -330,13 +330,14 @@ class Db
                     $sql_instruction = substr($sql_instruction, 0, -1);
                     $sql_instruction .= "WHERE ";
                     if ($this->filters){
-                        foreach ($this->filters as $filter)
+                        foreach ($this->filters as $filter){
                             if ($i == 1){
                                 $sql_instruction .= substr($filter,4);
                                 $i++;
                             }else{
                                 $sql_instruction .= $filter;
                             }
+                        }
                     }else 
                         $sql_instruction .= $this->columns[0] . "=" . $values[$this->columns[0]];
                 }
