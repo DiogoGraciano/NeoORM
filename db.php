@@ -1,8 +1,6 @@
 <?php
 namespace app\db;
 use app\db\configDB;
-use Exception;
-use stdClass;
 
 class Db
 {
@@ -16,27 +14,25 @@ class Db
     private $propertys =[];
     private $filters =[];
     private $lastid;
+    private $valuesBind = [];
+    private $counterBind = 1;
 
     function __construct($table)
     {
-        if ($this->validInjection($table)){
+        //Pega configuração do PDO
+        $this->config = new configDB;
+        $this->pdo = $this->config->getPDO();
 
-            //Pega configuração do PDO
-            $this->config = new configDB;
-            $this->pdo = $this->config->getPDO();
+        //Seta Tabela
+        $this->table = $table;
 
-            //Seta Tabela
-            $this->table = $table;
+        //Gera Objeto da tabela
+        $this->object = $this->getObjectTable();
 
-            //Gera Objeto da tabela
-            $this->object = $this->getObjectTable();
-
-            //Transforma as colunas da tabela em uma array
-            $this->columns = (array)$this->object;
-            $this->columns = array_keys($this->columns);
-        }
-        else 
-           throw new Exception("Tentativa de SQL Injection");
+        //Transforma as colunas da tabela em uma array
+        $this->columns = (array)$this->object;
+        $this->columns = array_keys($this->columns);
+      
     }
 
     public function transaction(){
@@ -115,6 +111,9 @@ class Db
     {
         try {
             $sql = $this->pdo->prepare($sql_instruction);
+            foreach ($this->valuesBind as $key => $data) {
+                $sql->bindParam($key,$data[0],$data[1]);
+            }
             $sql->execute();
 
             $array = [];
@@ -122,7 +121,7 @@ class Db
             if ($sql->rowCount() > 0) {
 
                 $rows = $sql->fetchAll(\PDO::FETCH_ASSOC);
-
+                
                 if ($rows) {
                     foreach ($rows as $row) {
                         $object = new \stdClass();
@@ -145,11 +144,9 @@ class Db
     //Faz um select em um registro da tabela
     public function selectOne($id)
     {
-        if ($this->validInjection($id))
-            $object = $this->selectInstruction("SELECT * FROM " . $this->table . " WHERE " . $this->columns[0] . "=" . $id);
-        else 
-            return false;
-
+        $this->valuesBind[1] = [$id,\PDO::PARAM_INT];
+        $object = $this->selectInstruction("SELECT * FROM " . $this->table . " WHERE " . $this->columns[0] . "=?");
+        
         return $object;
     }
 
@@ -203,10 +200,7 @@ class Db
     public function selectColumns(Array $columns)
     {
         $sql = "SELECT ";
-        foreach ($columns as $column){
-            $sql .= $column.",";  
-        }
-        $sql = substr($sql, 0, -1);
+        $sql .= implode(",",$columns);  
         $sql .= " FROM ".$this->table;
         foreach ($this->joins as $join){
             $sql .= $join;
@@ -243,15 +237,11 @@ class Db
                   
                 $value = trim($values[$i]);
 
-                if ($this->validInjection($value)){  
-                    if (is_string($value) && $value != "null")
-                        $conditions[] = $this->table.".".$column." = '".$value."' and ";
-                    elseif (is_int($value) || is_float($value) || $value == "null")
-                        $conditions[] = $this->table.".".$column." = ".$value." and ";  
-                    $i++;
-                }
-                else 
-                    return False;
+                if (is_string($value) && $value != "null")
+                    $conditions[] = $column." = '".$value."' and ";
+                elseif (is_int($value) || is_float($value) || $value == "null")
+                    $conditions[] = $column." = ".$value." and ";  
+                $i++;
             }
             $sql = substr($sql, 0, -1);
             if ($all == true){
@@ -291,23 +281,27 @@ class Db
         try {
             if ($values) {
                 $values = (array)$values;
+                $valuesBind = [];
                 if (!$values[$this->columns[0]]) {
                     $values[$this->columns[0]] = $this->getlastIdBd() + 1;
                     $sql_instruction = "INSERT INTO " . $this->table . "(";
                     $keysBD = "";
                     $valuesBD = "";
+                    $i = 1;
                     foreach ($values as $key => $data) {
                         if ($data){
                             $keysBD .= $key . ",";
-                            if ($this->validInjection($data)){
-                                if (is_string($data) && $data != "null"){
-                                    $data = trim($data);
-                                    $valuesBD .= "'" . $data . "',";
-                                }elseif (is_int($data) || is_float($data) || $data == "null")
-                                    $valuesBD .= $data . ",";
+                            if (is_string($data) && $data != "null"){
+                                $data = trim($data);
+                                $valuesBind[$i] = [$data,\PDO::PARAM_STR]; 
+                                $valuesBD .= "?,";
+                            }elseif (is_int($data) || is_float($data) && $data != "null"){
+                                $valuesBD .= "?,";
+                                $valuesBind[$i] = [$data,\PDO::PARAM_INT]; 
                             }
-                            else 
-                                return false;
+                            else    
+                                $valuesBD .= "null,";
+                            $i++;
                         }
                     }
                     $keysBD = substr($keysBD, 0, -1);
@@ -317,25 +311,29 @@ class Db
                     $sql_instruction .= $valuesBD;
                     $sql_instruction .= ");";
                 } elseif ($values[$this->columns[0]]) {
-
                     $sql_instruction = "UPDATE " . $this->table . " SET ";
+                    $i = 1;
                     foreach ($values as $key => $data) {
                         if ($data){
-                            if ($this->validInjection($data)){
-                                if (is_string($data)){
-                                    $data = trim($data);
-                                    $sql_instruction .= $key . '="' . $data . '",';
-                                }elseif (is_int($data) || is_float($data))
-                                    $sql_instruction .= $key . "=" . $data . ",";
-                            }
-                            else 
-                                return false;
+                            if (is_string($data) && $data != "null"){
+                                $data = trim($data);
+                                $valuesBind[$i] = [$data,\PDO::PARAM_STR]; 
+                                $sql_instruction .= $key . '=?,';
+                            }elseif (is_int($data) || is_float($data) && $data != "null"){
+                                $valuesBind[$i] = [$data,\PDO::PARAM_INT]; 
+                                $sql_instruction .= $key . "=?,";
+                            }else 
+                                $sql_instruction .= $key . "=null,";
+                            $i++;
                         }
                     }
                     $sql_instruction = substr($sql_instruction, 0, -1);
                     $sql_instruction .= "WHERE " . $this->columns[0] . "=" . $values[$this->columns[0]];
                 }
                 $sql = $this->pdo->prepare($sql_instruction);
+                foreach ($valuesBind as $key => $data) {
+                    $sql->bindParam($key,$data[0],$data[1]);
+                }
                 $sql->execute();
                 $this->lastid = $values[$this->columns[0]];
                 return true;
@@ -353,18 +351,22 @@ class Db
                 $sql_instruction = "INSERT INTO " . $this->table . "(";
                 $keysBD = "";
                 $valuesBD = "";
+                $valuesBind = [];
+                $i = 1;
                 foreach ($values as $key => $data) {
                     if ($data){
                         $keysBD .= $key . ",";
-                        if ($this->validInjection($data)){
-                            if (is_string($data) && $data != "null"){
-                                $data = trim($data);
-                                $valuesBD .= "'" . $data . "',";
-                            }elseif (is_int($data) || is_float($data) || $data == "null")
-                                $valuesBD .= $data . ",";
+                        if (is_string($data) && $data != "null"){
+                            $data = trim($data);
+                            $valuesBind[$i] = [$data,\PDO::PARAM_STR];  
+                            $valuesBD .= "?,";
+                        }elseif (is_int($data) || is_float($data) && $data != "null"){
+                            $valuesBD .= "?,";
+                            $valuesBind[$i] = [$data,\PDO::PARAM_INT]; 
                         }
-                        else 
-                            return false;
+                        else    
+                            $valuesBD .= "null,";
+                        $i++;
                     }
                 }
                 $keysBD = substr($keysBD, 0, -1);
@@ -374,6 +376,9 @@ class Db
                 $sql_instruction .= $valuesBD;
                 $sql_instruction .= ");";
                 $sql = $this->pdo->prepare($sql_instruction);
+                foreach ($valuesBind as $key => $data) {
+                    $sql->bindParam($key,$data[0],$data[1]);
+                }
                 $sql->execute();
                 return true;
             }
@@ -386,8 +391,9 @@ class Db
     public function delete($id)
     {
         try {
-            if ($id && $this->validInjection($id)){
-                $sql = $this->pdo->prepare("DELETE FROM " . $this->table . " WHERE " . $this->columns[0] . "=" . $id);
+            if ($id){
+                $sql = $this->pdo->prepare("DELETE FROM " . $this->table . " WHERE " . $this->columns[0] . "=?");
+                $sql->bindParam(1,$id,\PDO::PARAM_INT);
                 $sql->execute();
                 return true;
             }
@@ -427,13 +433,16 @@ class Db
     }
 
     public function addFilter($column,$condition,$value,$operator="AND"){
-        if ($this->validInjection($value)){  
-            if (is_string($value) && $value != "null")
-                $this->filters[] = " ".$operator." ".$column." ".$condition." '".$value."' ";
-            elseif (is_int($value) || is_float($value) || $value == "null")
-                $this->filters[] = " ".$operator." ".$column." ".$condition." ".$value." ";  
-        }
+        
+        if (is_string($value) && $value != "null")
+            $this->valuesBind[$this->counterBind] = [$value,\PDO::PARAM_STR];
+        elseif (is_int($value) || is_float($value) || $value == "null")
+            $this->valuesBind[$this->counterBind] = [$value,\PDO::PARAM_INT];
 
+        $this->counterBind++;
+
+        $this->filters[] = " ".$operator." ".$column." ".$condition."? ";
+        
         return $this;
     }
 
@@ -445,15 +454,23 @@ class Db
 
     public function addLimit($limitIni,$limitFim=""){
         if ($limitFim)
-            $this->propertys[] = " LIMIT ".$limitIni.",".$limitFim;
+            $this->propertys[] = " LIMIT ?,?";
         else 
-            $this->propertys[] = " LIMIT ".$limitIni;
+            $this->propertys[] = " LIMIT ?";
+
+        $this->valuesBind[$this->counterBind] = [$limitIni,\PDO::PARAM_INT];
+        $this->counterBind++;
+        $this->valuesBind[$this->counterBind] = [$limitFim,\PDO::PARAM_INT];
+        $this->counterBind++;
 
         return $this;
     }
 
     public function addGroup($columns){
-        $this->propertys[] = " GROUP by ".$columns;
+        $this->propertys[] = " GROUP by ?";
+
+        $this->valuesBind[$this->counterBind] = [$columns,\PDO::PARAM_INT];
+        $this->counterBind++;
 
         return $this;
     }
@@ -468,38 +485,10 @@ class Db
         $this->joins = [];
         $this->propertys = [];
         $this->filters = [];
+        $this->valuesBind = [];
+        $this->counterBind = 1;
     }
 
-    //valida se foi feito tentatiava de sql injection
-    function validInjection($value) {
-
-        $inject=0;
-
-        $value = trim($value);
-
-        if ($value){
-            $badword = array(" select","select "," insert"," update","update "," delete","delete "," drop","drop "," destroy","destroy ");
-            $charvalidos = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ÁÀÃÂÇÉÈÊÍÌÓÒÔÕÚÙÜÑáàãâçéèêíìóòôõúùüñ!?@#$%&(){}[]:;,.-_/| ";
-
-            for ($i=0;$i<sizeof($badword);$i++){
-                if (substr_count($value,$badword[$i])!=0){
-                    $inject=1;
-                }
-            }
-
-            for ($i=0;$i<strlen($value);$i++){
-                $char = substr($value,$i,1);
-                if (substr_count($charvalidos,$char)==0) {
-                    $inject=1;
-                }
-            }
-
-            if ($inject > 0)
-                $this->error[] = 'Erro: Indentificado tentativa de SQL Injection';
-        }
-
-        return($inject == 0);
-    }
 }
 ?>
 
