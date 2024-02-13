@@ -328,7 +328,17 @@ class Db
                         }
                     }
                     $sql_instruction = substr($sql_instruction, 0, -1);
-                    $sql_instruction .= "WHERE " . $this->columns[0] . "=" . $values[$this->columns[0]];
+                    $sql_instruction .= "WHERE ";
+                    if ($this->filters)
+                        foreach ($this->filters as $filter)
+                            if ($i == 1){
+                                $sql_instruction .= substr($filter,4);
+                                $i++;
+                            }else{
+                                $sql_instruction .= $filter;
+                            }
+                    else 
+                        $sql_instruction .= $this->columns[0] . "=" . $values[$this->columns[0]];
                 }
                 $sql = $this->pdo->prepare($sql_instruction);
                 foreach ($valuesBind as $key => $data) {
@@ -344,6 +354,7 @@ class Db
         }
     }
 
+    //Insere um registro com multi primaria
     public function storeMutiPrimary(\stdClass $values){
         try {
             if ($values) {
@@ -405,6 +416,7 @@ class Db
         }
     }
 
+    //Deleta por filtro
     public function deleteByFilter()
     {
         try {
@@ -432,6 +444,7 @@ class Db
         }
     }
 
+    //adiciona um filtro ao select
     public function addFilter($column,$condition,$value,$operator="AND"){
         
         if (is_string($value) && $value != "null")
@@ -446,12 +459,14 @@ class Db
         return $this;
     }
 
+    //adiciona um ORDER ao select
     public function addOrder($column,$order="DESC"){
         $this->propertys[] = " ORDER by ".$column." ".$order;
 
         return $this;
     }
 
+    //adiciona um LIMIT ao select
     public function addLimit($limitIni,$limitFim=""){
         if ($limitFim)
             $this->propertys[] = " LIMIT ?,?";
@@ -466,6 +481,7 @@ class Db
         return $this;
     }
 
+    //adiciona um GROUP ao select
     public function addGroup($columns){
         $this->propertys[] = " GROUP by ?";
 
@@ -475,12 +491,14 @@ class Db
         return $this;
     }
 
+    //adiciona um JOIN ao select
     public function addJoin($type,$table,$condition_from,$condition_to){
         $this->joins[] = " ".$type." JOIN ".$table." on ".$condition_from." = ".$condition_to;
 
         return $this;
     }
 
+    //limpa variaveis a pois operação
     private function clean(){
         $this->joins = [];
         $this->propertys = [];
