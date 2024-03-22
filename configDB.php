@@ -3,17 +3,17 @@ namespace app\db;
 
 class ConfigDB{
 
-    private $pdo;
+    protected $pdo = false;
     
-    public function getPDO() {
+    protected function getConnection() {
+        try {
+            $this->pdo = new \PDO("mysql:host=localhost;port=3306;dbname=bd;user=root;charset=utf8mb4");
+            $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
-        //futuramente terá possibilidade de ultilizar o postgresql
-        //$this->pdo = new PDO("pgsql:host=localhost;port=5432;dbname=app;user=postgres;password=154326");
-        //seta as configurações de acesso ao banco
-        $this->pdo = new \PDO("mysql:host=localhost;port=3306;dbname=app;user=root");
-        //$this->pdo = new \PDO("mysql:host=mysql;port=3306;dbname=app;user=root;password=154326");
-
-        return $this->pdo;
+            return $this->pdo;
+        } catch(\PDOException $e) {
+            Logger::error($e->getMessage());
+        }
     }
 }
 

@@ -2,9 +2,8 @@
 namespace app\db;
 use app\db\configDB;
 
-class Db
+class Db extends ConfigDB
 {
-    private $pdo;
     private $config;
     private $table;
     private $object;
@@ -19,9 +18,10 @@ class Db
 
     function __construct($table)
     {
-        //Pega configuração do PDO
-        $this->config = new configDB;
-        $this->pdo = $this->config->getPDO();
+        //Inicia a Conexão
+        if (!$this->pdo){
+            $this->getConnection();
+        }
 
         //Seta Tabela
         $this->table = $table;
@@ -30,42 +30,48 @@ class Db
         $this->object = $this->getObjectTable();
 
         //Transforma as colunas da tabela em uma array
-        $this->columns = (array)$this->object;
-        $this->columns = array_keys($this->columns);
-      
+        $this->columns = array_keys(get_object_vars($this->object));      
     }
 
     public function transaction(){
         if ($this->pdo->beginTransaction())
             return True;
-        else 
-            $this->error[] = "Erro: Não foi possivel iniciar a transação";
+       
+        $this->error[] = "Erro: Não foi possivel iniciar a transação";
     }
 
     public function commit(){
         if ($this->pdo->commit())
             return True;
-        else 
-            $this->error[] = "Erro: Não foi possivel finalizar a transação";
+         
+        $this->error[] = "Erro: Não foi possivel finalizar a transação";
     }
 
     public function rollback(){
         if ($this->pdo->rollback())
             return True;
-        else 
-            $this->error[] = "Erro: Não foi possivel desafazer a transação";
+        
+        $this->error[] = "Erro: Não foi possivel desafazer a transação";
     }
 
     //Retorna o ultimo ID da tabela
     private function getlastIdBd()
     {
-        $rows = $this->selectInstruction('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
-        if ($rows) {
-            $column = $this->columns[0];
-            return $rows->$column;
-        } else {
-            $this->error[] = "Erro: Tabela não encontrada";
+        $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
+       
+        $sql->execute();
+
+        $rows = [];
+
+        if ($sql->rowCount() > 0) {
+            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
         }
+
+        if ($rows) {
+            return $rows[0];
+        } 
+
+        $this->error[] = "Erro: Tabela não encontrada";
     }
 
     public function getLastID(){
@@ -92,52 +98,50 @@ class Db
     //Pega as colunas da tabela e tranforma em Objeto
     private function getObjectTable()
     {
-        $rows = (array)$this->selectInstruction('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
+        $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
+       
+        $sql->execute();
+
+        $rows = [];
+
+        if ($sql->rowCount() > 0) {
+            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+        }
+
         if ($rows) {
             $object = new \stdClass;
             foreach ($rows as $row) {
-                foreach ($row as $columns) {
-                    $object->$columns = "";
-                }
+                $object->$row = null;
             }
+
             return $object;
-        } else {
-            $this->error[] = "Erro: Tabela não encontrada";
-        }
+        } 
+
+        $this->error[] = "Erro: Tabela não encontrada";
+
+        return false;
     }
 
     //Faz um select com base me uma instrução e retorna um objeto
-    public function selectInstruction($sql_instruction,$asArray=false)
+    public function selectInstruction($sql_instruction)
     {
         try {
             $sql = $this->pdo->prepare($sql_instruction);
             foreach ($this->valuesBind as $key => $data) {
                 $sql->bindParam($key,$data[0],$data[1]);
             }
+            
             $sql->execute();
 
-            $array = [];
+            $rows = [];
 
             if ($sql->rowCount() > 0) {
-
-                $rows = $sql->fetchAll(\PDO::FETCH_ASSOC);
-                
-                if ($rows) {
-                    foreach ($rows as $row) {
-                        $object = new \stdClass();
-                        foreach ($row as $key => $data) {
-                            $object->$key = $data;
-                        }
-                        $array[] = $object;
-                    }
-                }
+                $rows = $sql->fetchAll(\PDO::FETCH_CLASS, 'stdClass');
             }
-            if ($asArray == false)
-                $array =  $this->isOneObject($array);
-
-            return $array;
+        
+            return $rows;
         } catch (\Exception $e) {
-            $this->error[] = 'Erro: ' .  $e->getMessage();
+            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();;
         }
     }
     
@@ -148,24 +152,6 @@ class Db
         $object = $this->selectInstruction("SELECT * FROM " . $this->table . " WHERE " . $this->columns[0] . "=?");
         
         return $object;
-    }
-
-    //Converte para objeto caso o retorno seja de apenas um registro
-    private function isOneObject($object)
-    {
-        if ($object) {
-
-            $object = (array)$object;
-
-            if (array_key_exists(1, $object)) {
-                return (object)$object;
-            } elseif (array_key_exists(0, $object)) {
-                $object = $object[0];
-                return (object)$object;
-            }
-        } else {
-            $this->error[] = 'Erro: Objeto vazio';
-        }
     }
 
     //Retorna um array com todos os registro da tabela
@@ -190,8 +176,8 @@ class Db
         foreach ($this->propertys as $property){
             $sql .= $property;
         }
-        
-        $object = $this->selectInstruction($sql,true);
+
+        $object = $this->selectInstruction($sql);
         $this->clean();
         return $object;
     }
@@ -220,8 +206,8 @@ class Db
         foreach ($this->propertys as $property){
             $sql .= $property;
         }
-    
-        $object = $this->selectInstruction($sql,true);
+        
+        $object = $this->selectInstruction($sql);
         $this->clean();
         return $object;
     }
@@ -235,13 +221,10 @@ class Db
             foreach ($columns as $column){
                 if (!$all)
                     $sql .= $column.",";
-                  
-                $value = trim($values[$i]);
-
-                if (is_string($value) && $value != "null")
-                    $conditions[] = $column." = '".$value."' and ";
-                elseif (is_int($value) || is_float($value) || $value == "null")
-                    $conditions[] = $column." = ".$value." and ";  
+                if (is_string($values[$i]) && $values[$i] != "null")
+                    $conditions[] = $column." = '".$values[$i]."' and ";
+                elseif (is_int($values[$i]) || is_float($values[$i]) || $values[$i] == "null")
+                    $conditions[] = $column." = ".$values[$i]." and ";  
                 $i++;
             }
             $sql = substr($sql, 0, -1);
@@ -269,11 +252,12 @@ class Db
                 $sql .= $property;
             }
 
-            $object = $this->selectInstruction($sql,true);
+            $object = $this->selectInstruction($sql);
             $this->clean();
             return $object;
-        }else 
-           $this->error[] = "Erro: Quantidade de colunas diferente do total de Valores";
+        } 
+        
+        $this->error[] = "Erro: Quantidade de colunas diferente do total de Valores";
     }
 
     //Salva ou atualiza um registro da tabela
@@ -282,23 +266,21 @@ class Db
         try {
             if ($values) {
                 $values = (array)$values;
-                $valuesBind = [];
                 if (!$values[$this->columns[0]]) {
                     $values[$this->columns[0]] = $this->getlastIdBd() + 1;
                     $sql_instruction = "INSERT INTO " . $this->table . "(";
                     $keysBD = "";
                     $valuesBD = "";
-                    $i = 1;
                     foreach ($values as $key => $data) {
                         $keysBD .= $key . ",";
                         $valuesBD .= "?,";
                         if (is_string($data))
-                            $valuesBind[$i] = [$data,\PDO::PARAM_STR];  
+                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_STR];  
                         elseif (is_int($data) || is_float($data))
-                            $valuesBind[$i] = [$data,\PDO::PARAM_INT]; 
+                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_INT]; 
                         else
-                            $valuesBind[$i] = [null,\PDO::PARAM_NULL]; 
-                        $i++;
+                            $this->valuesBind[$this->counterBind] = [null,\PDO::PARAM_NULL]; 
+                        $this->counterBind++;
                     }
                     $keysBD = substr($keysBD, 0, -1);
                     $sql_instruction .= $keysBD;
@@ -308,19 +290,21 @@ class Db
                     $sql_instruction .= ");";
                 } elseif ($values[$this->columns[0]]) {
                     $sql_instruction = "UPDATE " . $this->table . " SET ";
-                    $i = 1;
                     foreach ($values as $key => $data) {
+                        if ($key == $this->columns[0])
+                            continue;
                         $sql_instruction .= $key . '=?,';
-                        if (is_string($data) && $data != "null")
-                            $valuesBind[$i] = [$data,\PDO::PARAM_STR]; 
-                        elseif (is_int($data) || is_float($data) && $data != "null")
-                            $valuesBind[$i] = [$data,\PDO::PARAM_INT]; 
-                        else 
-                            $valuesBind[$i] = [null,\PDO::PARAM_INT];
-                        $i++;  
+                        if (is_string($data))
+                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_STR];  
+                        elseif (is_int($data) || is_float($data))
+                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_INT]; 
+                        else
+                            $this->valuesBind[$this->counterBind] = [null,\PDO::PARAM_NULL]; 
+                        $this->counterBind++;
                     }
                     $sql_instruction = substr($sql_instruction, 0, -1);
-                    $sql_instruction .= "WHERE ";
+                    $sql_instruction .= " WHERE ";
+                    $i = 1;
                     if ($this->filters){
                         foreach ($this->filters as $filter){
                             if ($i == 1){
@@ -334,7 +318,7 @@ class Db
                         $sql_instruction .= $this->columns[0] . "=" . $values[$this->columns[0]];
                 }
                 $sql = $this->pdo->prepare($sql_instruction);
-                foreach ($valuesBind as $key => $data) {
+                foreach ($this->valuesBind as $key => $data) {
                     $sql->bindParam($key,$data[0],$data[1]);
                 }
                 $sql->execute();
@@ -344,7 +328,7 @@ class Db
             }
             $this->error[] = "Erro: Valores não informados";
         } catch (\Exception $e) {
-            $this->error[] = 'Erro: ' .  $e->getMessage();
+            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
         }
     }
 
@@ -384,7 +368,7 @@ class Db
                 return true;
             }
         } catch (\Exception $e) {
-            $this->error[] = 'Erro: '.$e->getMessage();
+            $this->error[] = 'Tabela: '.$this->table.' Erro: '.$e->getMessage();
         }
     }
 
@@ -398,12 +382,11 @@ class Db
                 $sql->execute();
                 return true;
             }
-            else 
-                $this->error[] = 'Erro: ID Invalido';
-            return false;
+            $this->error[] = 'Tabela: '.$this->table.' Erro: ID Invalido';
         } catch (\Exception $e) {
-            $this->error[] = 'Erro: ' .  $e->getMessage();
+            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
         }
+        return false;
     }
 
     //Deleta por filtro
@@ -422,15 +405,18 @@ class Db
                     }
                 }
                 $sql = $this->pdo->prepare($sql_instruction); 
+                foreach ($this->valuesBind as $key => $data) {
+                    $sql->bindParam($key,$data[0],$data[1]);
+                }
                 $sql->execute();
                 $this->clean();
                 return true;
             }
-            else 
-                $this->error[] = 'Erro: Obrigatorio Uso de filtro';
+            $this->error[] = 'Tabela: '.$this->table.' Erro: Obrigatorio Uso de filtro';
             return false;
+
         } catch (\Exception $e) {
-            $this->error[] = 'Erro: ' .  $e->getMessage();
+            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
         }
     }
 
@@ -460,25 +446,17 @@ class Db
 
     //adiciona um LIMIT ao select
     public function addLimit($limitIni,$limitFim=""){
-        if ($limitFim)
-            $this->propertys[] = " LIMIT ?,?";
-        else 
-            $this->propertys[] = " LIMIT ?";
-
-        $this->valuesBind[$this->counterBind] = [$limitIni,\PDO::PARAM_INT];
-        $this->counterBind++;
-        $this->valuesBind[$this->counterBind] = [$limitFim,\PDO::PARAM_INT];
-        $this->counterBind++;
+        if ($limitFim){
+            $this->propertys[] = " LIMIT {$limitIni},{$limitFim}";
+        }else
+            $this->propertys[] = " LIMIT {$limitIni}";
 
         return $this;
     }
 
     //adiciona um GROUP ao select
     public function addGroup($columns){
-        $this->propertys[] = " GROUP by ?";
-
-        $this->valuesBind[$this->counterBind] = [$columns,\PDO::PARAM_INT];
-        $this->counterBind++;
+        $this->propertys[] = " GROUP by ".$columns;
 
         return $this;
     }
