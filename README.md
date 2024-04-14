@@ -1,4 +1,4 @@
-# Gerenciador de Bancos de Dados
+# SimpleBD
 
 Classe para gerenciar um banco de dados mysql
 
