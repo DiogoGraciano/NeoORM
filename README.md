@@ -89,7 +89,7 @@ $retorno = $db->delete($id);
 ```
 # Outros Exemplos
 ```php
-//em  Todos os casos acima é possivel usar a diretamente a classe DB informado a tabela desejada no __contruct
+//em Todos os casos acima é possivel usar a diretamente a classe DB informado a tabela desejada no __contruct
 $id = 1;
 
 $db = new db("tb_funcionario");
