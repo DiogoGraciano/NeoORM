@@ -78,6 +78,20 @@ class Db extends ConfigDB
     private $counterBind = 1;
 
     /**
+     * Constante do operado AND.
+     *
+     * @var string
+    */
+    const AND = "AND";
+
+    /**
+     * Constante do operado OR.
+     *
+     * @var string
+    */
+    const OR = "OR";
+
+    /**
      * Construtor da classe.
      * 
      * @param string $table Nome da tabela do banco de dados.
@@ -574,7 +588,7 @@ class Db extends ConfigDB
      * @param string $operator Operador lógico (AND ou OR).
      * @return db Retorna a instância atual da classe.
      */
-    public function addFilter(string $column,string $condition,$value,string $operator="AND"){
+    public function addFilter(string $column,string $condition,$value,string $operator=DB::AND){
         
         if (is_string($value))
             $this->valuesBind[$this->counterBind] = [$value,\PDO::PARAM_STR];
