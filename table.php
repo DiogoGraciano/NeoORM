@@ -1,13 +1,17 @@
 <?php
 namespace app\db;
 
-//exemplo de uso com herança
+/**
+ * Classe para interação com a tabela 'table1' no banco de dados.
+*/
 class table1 extends db{
     public function __construct(){
         parent::__construct("table1");
     }
 
     public function get($value="",$column="id"){
+        $retorno = [];
+        
         if ($value)
             $retorno = $this->addFilter($column,"=",$value)->selectAll();
         else
@@ -27,12 +31,17 @@ class table1 extends db{
         return $this->addFilter($column,"=",$value)->deleteByFilter();
     }
 }
+/**
+ * Classe para interação com a tabela 'table2' no banco de dados.
+*/
 class table2 extends db{
     public function __construct(){
         parent::__construct("table2");
     }
 
     public function get($value="",$column="id"){
+        $retorno = [];
+
         if ($value)
             $retorno = $this->addFilter($column,"=",$value)->selectAll();
         else
