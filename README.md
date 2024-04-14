@@ -1,4 +1,4 @@
-# SimpleBD
+# NexusDB
 
 Classe para gerenciar um banco de dados mysql
 
