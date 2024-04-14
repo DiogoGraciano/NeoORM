@@ -7,8 +7,19 @@ Capaz de atualizar, inserir, excluir e selecionar registros de uma ou mais tabel
 Exemplos
 
 # Exemplos Select
-
 ```php
+//retornara um objeto com todas as colunas da tabela com base no $id informado
+$result = (new agendamento)->get($id);
+
+//retornara um objeto com todas as colunas da tabela com base no $nome informado
+$result = (new agendamento)->get($nome,"nome");
+```
+```php
+//retornara array de objetos com todas as colunas e registros da tabela 
+$result = (new agendamento)->getAll($id);
+```
+```php
+//retornara um array de objetos com todas as colunas da tabela com base nos filtros informados
 $db = new agendamento;
 $results = $db->addFilter("dt_ini",">=",$dt_inicio)
               ->addFilter("dt_fim","<=",$dt_fim)
@@ -17,6 +28,7 @@ $results = $db->addFilter("dt_ini",">=",$dt_inicio)
               ->selectAll();
 ```
 ```php
+//retornara um array de objetos com todas as colunas informadas da tabela com base nos filtros informados e nos joins adicionados 
 $db = new agendamento;
 $result = $db->addJoin("LEFT","usuario","usuario.id","agendamento.id_usuario")
               ->addJoin("INNER","agenda","agenda.id","agendamento.id_agenda")
@@ -26,6 +38,7 @@ $result = $db->addJoin("LEFT","usuario","usuario.id","agendamento.id_usuario")
               ->selectColumns("agendamento.id","usuario.cpf_cnpj","cliente.nome as cli_nome","usuario.nome as usu_nome","usuario.email","usuario.telefone","agenda.nome as age_nome","funcionario.nome as fun_nome","dt_ini","dt_fim");
 ```
 ```php
+//retornara um array de objetos com todas as colunas informadas que os valores batem com o informado no segundo parametro da tabela com base nos filtros informado e no limit informado 
 $db = new cidade;
 $result = $db->addFilter("nome","LIKE","%".$nome."%")->addLimit(1)->selectByValues(array("uf"),array($id_uf),true);
 ```
