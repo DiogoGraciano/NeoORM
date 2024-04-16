@@ -234,7 +234,7 @@ class Db extends ConfigDB
         } 
 
         $this->error[] = "Erro: Tabela não encontrada";
-        return false;
+        return new \StdClass;
     }
 
     /**
@@ -434,7 +434,7 @@ class Db extends ConfigDB
                     $valuesBD = substr($valuesBD, 0, -1);
                     $sql_instruction .= $valuesBD;
                     $sql_instruction .= ");";
-                } elseif ($values[$this->columns[0]] && $values[$this->columns[0]]) {
+                } elseif (isset($values[$this->columns[0]]) && $values[$this->columns[0]]) {
                     $sql_instruction = "UPDATE " . $this->table . " SET ";
                     foreach ($values as $key => $data) {
                         if ($key == $this->columns[0])
