@@ -1,11 +1,11 @@
 <?php
 namespace app\db;
-use app\db\configDB;
+use Exception;
 
 /**
  * Classe base para interação com o banco de dados.
  */
-class Db extends ConfigDB
+class Db extends connectionDb
 {
     /**
      * Tabela atual.
@@ -92,6 +92,13 @@ class Db extends ConfigDB
     const OR = "OR";
 
     /**
+     * instacia do PDO.
+     *
+     * @var PDO
+    */
+    private $pdo;
+
+    /**
      * Construtor da classe.
      * 
      * @param string $table Nome da tabela do banco de dados.
@@ -100,7 +107,7 @@ class Db extends ConfigDB
     {
         // Inicia a Conexão
         if (!$this->pdo)
-            $this->getConnection();
+            $this->pdo = connectionDb::getInstance()->startConnection();
 
         // Seta Tabela
         $this->table = $table;
@@ -110,42 +117,6 @@ class Db extends ConfigDB
 
         // Transforma as colunas da tabela em uma array
         $this->columns = array_keys(get_object_vars($this->object));      
-    }
-
-    /**
-     * Inicia uma transação no banco de dados.
-     * 
-     * @return bool Retorna true se a transação foi iniciada com sucesso, caso contrário, retorna false.
-     */
-    public function transaction(){
-        if ($this->pdo->beginTransaction())
-            return True;
-       
-        $this->error[] = "Erro: Não foi possível iniciar a transação";
-    }
-
-    /**
-     * Confirma uma transação no banco de dados.
-     * 
-     * @return bool Retorna true se a transação foi confirmada com sucesso, caso contrário, retorna false.
-     */
-    public function commit(){
-        if ($this->pdo->commit())
-            return True;
-         
-        $this->error[] = "Erro: Não foi possível finalizar a transação";
-    }
-
-    /**
-     * Desfaz uma transação no banco de dados.
-     * 
-     * @return bool Retorna true se a transação foi desfeita com sucesso, caso contrário, retorna false.
-     */
-    public function rollback(){
-        if ($this->pdo->rollback())
-            return True;
-        
-        $this->error[] = "Erro: Não foi possível desfazer a transação";
     }
 
     /**
@@ -163,13 +134,11 @@ class Db extends ConfigDB
 
         if ($sql->rowCount() > 0) {
             $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+            return $rows[0];
         }
 
-        if ($rows) {
-            return $rows[0];
-        } 
-
         $this->error[] = "Erro: Tabela não encontrada";
+        
     }
 
     /**
@@ -214,7 +183,7 @@ class Db extends ConfigDB
     //Pega as colunas da tabela e tranforma em Objeto
     private function getObjectTable()
     {
-        $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
+        $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
        
         $sql->execute();
 
@@ -222,16 +191,12 @@ class Db extends ConfigDB
 
         if ($sql->rowCount() > 0) {
             $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
-        }
-
-        if ($rows) {
             $object = new \stdClass;
             foreach ($rows as $row) {
                 $object->$row = null;
             }
-
             return $object;
-        } 
+        }
 
         $this->error[] = "Erro: Tabela não encontrada";
         return new \StdClass;
@@ -266,20 +231,6 @@ class Db extends ConfigDB
     }
     
     /**
-     * Seleciona um único registro com base em um ID.
-     * 
-     * @param int $id O ID do registro a ser selecionado.
-     * @return object|null Retorna o registro selecionado ou null se nenhum registro foi encontrado.
-     */
-    public function selectOne($id)
-    {
-        $this->valuesBind[1] = [$id,\PDO::PARAM_INT];
-        $object = $this->selectInstruction("SELECT * FROM " . $this->table . " WHERE " . $this->columns[0] . "=?");
-        
-        return $object;
-    }
-
-    /**
      * Seleciona todos os registros da tabela.
      * 
      * @return array Retorna um array contendo todos os registros da tabela.
@@ -287,24 +238,13 @@ class Db extends ConfigDB
     public function selectAll()
     {
         $sql = "SELECT * FROM " . $this->table;
-        foreach ($this->joins as $join){
-            $sql .= $join;
+        $sql .= implode('', $this->joins);
+        if ($this->filters) {
+            $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
+                return $i === 0 ? substr($filter, 4) : $filter;
+            }, $this->filters, array_keys($this->filters)));
         }
-        if ($this->filters){
-            $sql .= " WHERE ";
-            $i = 1;
-            foreach ($this->filters as $filter){
-                if ($i == 1){
-                    $sql .= substr($filter,4);
-                    $i++;
-                }else{
-                    $sql .= $filter;
-                }
-            }    
-        }
-        foreach ($this->propertys as $property){
-            $sql .= $property;
-        }
+        $sql .= implode('', $this->propertys);
 
         $object = $this->selectInstruction($sql);
         $this->clean();
@@ -322,84 +262,18 @@ class Db extends ConfigDB
         $sql = "SELECT ";
         $sql .= implode(",",$columns);  
         $sql .= " FROM ".$this->table;
-        foreach ($this->joins as $join){
-            $sql .= $join;
+        $sql .= implode('', $this->joins);
+        if ($this->filters) {
+            $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
+                return $i === 0 ? substr($filter, 4) : $filter;
+            }, $this->filters, array_keys($this->filters)));
         }
-        if ($this->filters){
-            $sql .= " WHERE ";
-            $i = 1;
-            foreach ($this->filters as $filter){
-                if ($i == 1){
-                    $sql .= substr($filter,4);
-                    $i++;
-                }else{
-                    $sql .= $filter;
-                }
-            }    
-        }
-        foreach ($this->propertys as $property){
-            $sql .= $property;
-        }
-        
+        $sql .= implode('', $this->propertys);
         $object = $this->selectInstruction($sql);
         $this->clean();
         return $object;
     }
 
-    /**
-     * Seleciona registros com base em colunas e valores específicos.
-     * 
-     * @param array $columns Colunas a serem usadas na seleção.
-     * @param array $values Valores a serem usados na seleção.
-     * @param bool $all Flag para selecionar todos os registros ou não.
-     * @return array Retorna um array contendo os registros selecionados.
-     */
-    public function selectByValues(Array $columns,array $values,$all=false){
-        if (count($columns) == count($values)){
-            $conditions = [];
-            $sql = "SELECT ";
-            $i = 0;
-            foreach ($columns as $column){
-                if (!$all)
-                    $sql .= $column.",";
-                if (is_string($values[$i]) && $values[$i] != "null")
-                    $conditions[] = $column." = '".$values[$i]."' and ";
-                elseif (is_int($values[$i]) || is_float($values[$i]) || $values[$i] == "null")
-                    $conditions[] = $column." = ".$values[$i]." and ";  
-                $i++;
-            }
-            $sql = substr($sql, 0, -1);
-            if ($all == true){
-                $sql .= " *";
-            }
-            $sql .= " FROM ".$this->table;
-            foreach ($this->joins as $join){
-                $sql .= $join;
-            }
-            $sql .= " WHERE ";
-            foreach ($conditions as $condition){
-                $sql .= $condition;
-            }
-            $sql = substr($sql, 0, -4);
-            foreach ($this->filters as $filter){
-                if ($i == 1){
-                    $sql .= substr($filter,4);
-                    $i++;
-                }else{
-                    $sql .= $filter;
-                }
-            }
-            foreach ($this->propertys as $property){
-                $sql .= $property;
-            }
-
-            $object = $this->selectInstruction($sql);
-            $this->clean();
-            return $object;
-        } 
-        
-        $this->error[] = "Erro: Quantidade de colunas diferente do total de Valores";
-    }
 
     /**
      * Salva ou Atualiza um registro na tabela.
@@ -413,60 +287,60 @@ class Db extends ConfigDB
             if ($values) {
                 $values = (array)$values;
                 if (!isset($values[$this->columns[0]]) || !$values[$this->columns[0]]) {
+                    // Incrementando o ID
                     $values[$this->columns[0]] = $this->getlastIdBd() + 1;
-                    $sql_instruction = "INSERT INTO " . $this->table . "(";
-                    $keysBD = "";
+
+                    // Montando a instrução SQL
+                    $sql_instruction = "INSERT INTO {$this->table} (";
+                    $keysBD = implode(",", array_keys($values));
                     $valuesBD = "";
+
+                    // Preparando os valores para bind e montando a parte dos valores na instrução SQL
                     foreach ($values as $key => $data) {
-                        $keysBD .= $key . ",";
                         $valuesBD .= "?,";
-                        if (is_string($data))
-                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_STR];  
-                        elseif (is_int($data) || is_float($data))
-                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_INT]; 
-                        else
-                            $this->valuesBind[$this->counterBind] = [null,\PDO::PARAM_NULL]; 
+                        $this->valuesBind[$this->counterBind] = [
+                            $data,
+                            is_string($data) ? \PDO::PARAM_STR : (is_int($data) || is_float($data) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
+                        ];
                         $this->counterBind++;
                     }
-                    $keysBD = substr($keysBD, 0, -1);
-                    $sql_instruction .= $keysBD;
-                    $sql_instruction .= ") VALUES (";
-                    $valuesBD = substr($valuesBD, 0, -1);
-                    $sql_instruction .= $valuesBD;
-                    $sql_instruction .= ");";
+                    $keysBD = rtrim($keysBD, ",");
+                    $sql_instruction .= $keysBD . ") VALUES (";
+                    $valuesBD = rtrim($valuesBD, ",");
+                    $sql_instruction .= $valuesBD . ");";
                 } elseif (isset($values[$this->columns[0]]) && $values[$this->columns[0]]) {
-                    $sql_instruction = "UPDATE " . $this->table . " SET ";
+                    $sql_instruction = "UPDATE {$this->table} SET ";
                     foreach ($values as $key => $data) {
-                        if ($key == $this->columns[0])
+                        if ($key === $this->columns[0]) // Ignorando a primeira coluna (geralmente a chave primária)
                             continue;
-                        $sql_instruction .= $key . '=?,';
-                        if (is_string($data))
-                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_STR];  
-                        elseif (is_int($data) || is_float($data))
-                            $this->valuesBind[$this->counterBind] = [$data,\PDO::PARAM_INT]; 
-                        else
-                            $this->valuesBind[$this->counterBind] = [null,\PDO::PARAM_NULL]; 
+
+                        $sql_instruction .= "{$key}=?,";
+                        $this->valuesBind[$this->counterBind] = [
+                            $data,
+                            is_string($data) ? \PDO::PARAM_STR : (is_int($data) || is_float($data) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
+                        ];
                         $this->counterBind++;
                     }
-                    $sql_instruction = substr($sql_instruction, 0, -1);
-                    $sql_instruction .= " WHERE ";
-                    $i = 1;
-                    if ($this->filters){
-                        foreach ($this->filters as $filter){
-                            if ($i == 1){
-                                $sql_instruction .= substr($filter,4);
-                                $i++;
-                            }else{
-                                $sql_instruction .= $filter;
-                            }
-                        }
-                    }else 
-                        $sql_instruction .= $this->columns[0] . "=" . $values[$this->columns[0]];
+                    $sql_instruction = rtrim($sql_instruction, ",") . " WHERE ";
+
+                    // Adicionando cláusula WHERE
+                    if ($this->filters) {
+                        $sql_instruction .= implode(" AND ", $this->filters);
+                    } else {
+                        $sql_instruction .= "{$this->columns[0]}=?";
+                        $this->valuesBind[$this->counterBind] = [
+                            $values[$this->columns[0]],
+                            \PDO::PARAM_INT
+                        ];
+                        $this->counterBind++;
+                    }
                 }
+
                 $sql = $this->pdo->prepare($sql_instruction);
                 foreach ($this->valuesBind as $key => $data) {
                     $sql->bindParam($key,$data[0],$data[1]);
                 }
+
                 $sql->execute();
                 $this->lastid = $values[$this->columns[0]];
                 $this->clean();
@@ -487,30 +361,25 @@ class Db extends ConfigDB
         try {
             if ($values) {
                 $values = (array)$values;
-                $sql_instruction = "INSERT INTO " . $this->table . "(";
-                $keysBD = "";
+                $sql_instruction = "INSERT INTO {$this->table} (";
+                $keysBD = implode(",", array_keys($values));
                 $valuesBD = "";
-                $valuesBind = [];
-                $i = 1;
+
+                // Preparando os valores para bind e montando a parte dos valores na instrução SQL
                 foreach ($values as $key => $data) {
-                    $keysBD .= $key . ",";
                     $valuesBD .= "?,";
-                    if (is_string($data))
-                        $valuesBind[$i] = [$data,\PDO::PARAM_STR];  
-                    elseif (is_int($data) || is_float($data))
-                        $valuesBind[$i] = [$data,\PDO::PARAM_INT]; 
-                    else
-                        $valuesBind[$i] = [null,\PDO::PARAM_NULL]; 
-                    $i++;
+                    $this->valuesBind[$this->counterBind] = [
+                        $data,
+                        is_string($data) ? \PDO::PARAM_STR : (is_int($data) || is_float($data) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
+                    ];
+                    $this->counterBind++;
                 }
-                $keysBD = substr($keysBD, 0, -1);
-                $sql_instruction .= $keysBD;
-                $sql_instruction .= ") VALUES (";
-                $valuesBD = substr($valuesBD, 0, -1);
-                $sql_instruction .= $valuesBD;
-                $sql_instruction .= ");";
+                $keysBD = rtrim($keysBD, ",");
+                $sql_instruction .= $keysBD . ") VALUES (";
+                $valuesBD = rtrim($valuesBD, ",");
+                $sql_instruction .= $valuesBD . ");";
                 $sql = $this->pdo->prepare($sql_instruction);
-                foreach ($valuesBind as $key => $data) {
+                foreach ($this->valuesBind as $key => $data) {
                     $sql->bindParam($key,$data[0],$data[1]);
                 }
                 $sql->execute();
@@ -544,38 +413,33 @@ class Db extends ConfigDB
         return false;
     }
 
-     /**
-     * Deleta registros da tabela com base em um filtro.
+    /**
+     * Deleta registros da tabela com base em filtros aplicados.
      * 
-     * @return bool Retorna true se a operação foi bem-sucedida, caso contrário, retorna false.
+     * @return bool Retorna true se a operação for bem-sucedida, false caso contrário.
      */
     public function deleteByFilter()
     {
         try {
-            if ($this->filters){
-                $sql_instruction = "DELETE FROM " . $this->table . " WHERE ";
-                $i = 1;
-                foreach ($this->filters as $filter){
-                    if ($i == 1){
-                        $sql_instruction .= substr($filter,4);
-                        $i++;
-                    }else{
-                        $sql_instruction .= $filter;
-                    }
-                }
-                $sql = $this->pdo->prepare($sql_instruction); 
-                foreach ($this->valuesBind as $key => $data) {
-                    $sql->bindParam($key,$data[0],$data[1]);
-                }
-                $sql->execute();
-                $this->clean();
-                return true;
+            $sql = "DELETE FROM " . $this->table;
+            
+            if ($this->filters) {
+                $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
+                    return $i === 0 ? substr($filter, 4) : $filter;
+                }, $this->filters, array_keys($this->filters)));
             }
-            $this->error[] = 'Tabela: '.$this->table.' Erro: Obrigatorio Uso de filtro';
-            return false;
 
-        } catch (\Exception $e) {
-            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($this->valuesBind as $key => $data) {
+                $stmt->bindParam($key, $data[0], $data[1]);
+            }
+
+            $stmt->execute();
+            $this->clean();
+            return true;
+        } catch (Exception $e) {
+            $this->error[] = 'Tabela: ' . $this->table . ' Erro: ' .  $e->getMessage();
+            return false;
         }
     }
 
@@ -588,19 +452,22 @@ class Db extends ConfigDB
      * @param string $operator Operador lógico (AND ou OR).
      * @return db Retorna a instância atual da classe.
      */
-    public function addFilter(string $column,string $condition,$value,string $operator=DB::AND){
-        
-        if (is_string($value))
-            $this->valuesBind[$this->counterBind] = [$value,\PDO::PARAM_STR];
-        elseif (is_int($value) || is_float($value))
-            $this->valuesBind[$this->counterBind] = [$value,\PDO::PARAM_INT];
-        else 
-            $this->valuesBind[$this->counterBind] = [Null,\PDO::PARAM_NULL];
+    public function addFilter($field,$logicalOperator,$value,$operatorCondition = Db::AND)
+    {
+        $operatorCondition = strtoupper(trim($operatorCondition));
+        if (!in_array($operatorCondition, [self::AND, self::OR])) {
+            $this->error[] = "Filtro inválido";
+            return $this;
+        }
 
+        $this->valuesBind[$this->counterBind] = [
+            $value,
+            is_string($value) ? \PDO::PARAM_STR : (is_int($value) || is_float($value) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
+        ];
         $this->counterBind++;
 
-        $this->filters[] = " ".$operator." ".$column." ".$condition."? ";
-        
+        $filter = " " . $operatorCondition . " " . $field . " " . $logicalOperator . " ? ";
+        $this->filters[] = $filter;
         return $this;
     }
 
@@ -648,15 +515,24 @@ class Db extends ConfigDB
     /**
      * Adiciona um JOIN à consulta SQL.
      * 
-     * @param string $type Tipo de JOIN (INNER, LEFT, RIGHT).
+     * @param string $typeJoin Tipo de JOIN (INNER, LEFT, RIGHT).
      * @param string $table Tabela para JOIN.
-     * @param string $condition_from Condição da tabela atual.
-     * @param string $condition_to Condição da tabela de junção.
+     * @param string $columTable Condição da tabela atual.
+     * @param string $columRelation Condição da tabela de junção.
+     * @param string $logicalOperator operador do join.
+     * @param string $alias da tabeça.
      * @return $this Retorna a instância atual da classe.
      */
-    public function addJoin(string $type,string $table,string $condition_from,string $condition_to){
-        $this->joins[] = " ".$type." JOIN ".$table." on ".$condition_from." = ".$condition_to;
+    public function addJoin($typeJoin, $table, $columTable, $columRelation, $logicalOperator = '=', $alias = null)
+    {
+        $typeJoin = strtoupper(trim($typeJoin));
+        if (!in_array($typeJoin, ["LEFT", "RIGHT", "INNER", "OUTER", "FULL OUTER", "LEFT OUTER", "RIGHT OUTER"])) {
+            $this->error[] = "JOIN inválido";
+            return $this;
+        }
 
+        $join = " " . $typeJoin . " JOIN " . $table . ($alias ? " $alias" : "") . " ON " . $columTable . $logicalOperator . $columRelation . " ";
+        $this->joins[] = $join;
         return $this;
     }
 
