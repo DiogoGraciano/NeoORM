@@ -50,7 +50,7 @@ class columnDb
         'LONGTEXT'
     ];
 
-    public function __construct(string $name,string $type,int|null $size = null)
+    public function __construct(string $name,string $type,string|int|null $size = null)
     {
         $type = strtoupper(trim($type));
         
@@ -136,7 +136,13 @@ class columnDb
         return $this;
     }
 
-    private function validateSize(string $type,int $size){
+    private function validateSize(string $type,string|int $size){
+        if(in_array($type,["DECIMAL","FLOAT","DOUBLE"]) && preg_match("/\d+,\d+$/", $size)){
+            return true;
+        }
+
+        $size = intval($size);
+
         if($size < 0){
             throw new Exception("Tamanho é invalido");
         }

@@ -123,6 +123,8 @@ class tableDb extends connectionDb
             $sql .= str_replace(" , ","",implode(",",array_filter($column->columnSql)));
         }
 
+        $sql = rtrim(trim($sql),",");
+
         $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate}; COMMENT='{$this->comment}'";
 
         if($this->isAutoIncrement){
@@ -144,13 +146,13 @@ class tableDb extends connectionDb
             $this->create();
         }
 
+        $sql = "";
+
         $table = $this->getColumnsTable();
 
         if(!$table){
             return $this->create();
         }
-
-        $sql = "";
 
         foreach ($table as $columnDb){
             if(!in_array($columnDb,array_keys($this->columns))){
@@ -175,23 +177,32 @@ class tableDb extends connectionDb
                 
                 !$inDb?$operation = "ADD":$operation = "MODIFY";
                
+                $changed = false;
                 if(!$inDb || strtolower($column->type) != $columnInformation[0]->COLUMN_TYPE || 
                     ($columnInformation[0]->IS_NULLABLE == "YES" && $column->null) || 
                     $columnInformation[0]->COLUMN_DEFAULT != $column->defautValue || 
                     $columnInformation[0]->COLUMN_COMMENT != $column->commentValue){
+                    $changed = true;
                     $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment};";
                 }
+                if($inDb && ($column->foreingKey && $columnInformation[0]->COLUMN_KEY == "MUL") && $changed){
+                    $ForeingkeyName = $this->getForeingKeyName($column->foreingTable);
+                    if(isset($ForeingkeyName[0]))
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
+                    else 
+                        throw new Exception("Não foi possivel remover FOREIGN KEY para atualizar a coluna");
+                }
 
-                if($column->primary && $columnInformation[0]->COLUMN_KEY != "PRI"){
+                if(!$inDb || ($column->primary && $columnInformation[0]->COLUMN_KEY != "PRI")){
                     $sql .= "ALTER TABLE {$this->table} ADD PRIMARY KEY ({$column->name});";
                 }
 
-                if($column->unique && $columnInformation[0]->COLUMN_KEY != "UNI"){
+                if(!$inDb || ($column->unique && $columnInformation[0]->COLUMN_KEY != "UNI")){
                     $sql .= "ALTER TABLE {$this->table} ADD UNIQUE ({$column->name});";
                 }
 
-                if($column->foreingKey && $columnInformation[0]->COLUMN_KEY != "MUL"){
-                    $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->foreingTable}) REFERENCES {$column->foreingColumn}({$column->foreingTable});";
+                if(!$inDb || ($column->foreingKey && $columnInformation[0]->COLUMN_KEY != "MUL")){
+                    $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
                 }
             }
         }
@@ -207,7 +218,7 @@ class tableDb extends connectionDb
                 $sql .= "ALTER TABLE {$this->table} COLLATE = {$this->collate};";
 
             if($this->comment && $tableInformation[0]->TABLE_COMMENT != $this->comment)
-                $sql .= "ALTER TABLE {$this->table} COMMENT = {$this->comment};";
+                $sql .= "ALTER TABLE {$this->table} COMMENT = '{$this->comment}';";
 
             if($this->isAutoIncrement && $tableInformation[0]->AUTO_INCREMENT == null){
                 $sql .= "ALTER TABLE {$this->table} AUTO_INCREMENT = 1";
@@ -291,6 +302,20 @@ class tableDb extends connectionDb
     private function getIndexInformation()
     {
         $sql = $this->pdo->prepare('SELECT INDEX_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" GROUP BY INDEX_NAME HAVING COUNT(INDEX_NAME) > 1');
+       
+        $sql->execute();
+
+        $rows = [];
+
+        if ($sql->rowCount() > 0) {
+            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+        }
+
+        return $rows;   
+    }
+
+    private function getForeingKeyName($ForeingkeyTable){
+        $sql = $this->pdo->prepare('SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" AND REFERENCED_TABLE_NAME = "'.$ForeingkeyTable.'" LIMIT 1');
        
         $sql->execute();
 

@@ -1,7 +1,7 @@
 <?php
-
 namespace app\db;
 
+require __DIR__.DIRECTORY_SEPARATOR."configDb.php";
 use ErrorException;
 use PDO;
 use PDOException;
@@ -86,9 +86,6 @@ class ConnectionDb
                 $this->pdo = new PDO($dsn, DBUSER, DBPASSWORD);
                 $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             } catch (PDOException $e) {
-                // Registra o erro no log antes de lançar a exceção
-                Logger::error($e->getMessage());
-
                 // Lança uma exceção personalizada
                 throw new ErrorException("Erro ao conectar ao banco de dados");
             }
@@ -109,7 +106,6 @@ class ConnectionDb
         try {
             $this->startConnection()->beginTransaction();
         } catch (PDOException $e) {
-            Logger::error($e->getMessage());
             throw new ErrorException("Erro ao iniciar a transação");
         }
     }
@@ -126,7 +122,6 @@ class ConnectionDb
         try {
             $this->startConnection()->commit();
         } catch (PDOException $e) {
-            Logger::error($e->getMessage());
             throw new ErrorException("Erro ao confirmar a transação");
         }
     }
@@ -143,7 +138,6 @@ class ConnectionDb
         try {
             $this->startConnection()->rollBack();
         } catch (PDOException $e) {
-            Logger::error($e->getMessage());
             throw new ErrorException("Erro ao desfazer a transação");
         }
     }

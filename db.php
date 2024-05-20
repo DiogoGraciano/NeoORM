@@ -138,7 +138,6 @@ class Db extends connectionDb
         }
 
         $this->error[] = "Erro: Tabela não encontrada";
-        
     }
 
     /**
