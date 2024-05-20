@@ -118,7 +118,7 @@ $agendamentoTb->execute($recreate);
 $agendamentoTb->commit();
 }catch(Exception $e) {
         $agendamentoTb->rollBack();
-        echo $e->getMessage()."<br>";
+        echo $e->getMessage();
 }
 //apos criado sempre que esse codigo for execultado irá verificar se alguma informação da tabela precisa ser atualizada
 ```
