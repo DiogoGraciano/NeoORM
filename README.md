@@ -1,8 +1,6 @@
-# NexusDB
+# NeoORM
 
-Classe para gerenciar um banco de dados mysql
-
-Capaz de atualizar, inserir, excluir e selecionar registros de uma ou mais tabelas.
+Capaz de criar e atualizar tabelas e atualizar, inserir, excluir e selecionar registros de uma ou mais tabelas.
 
 Exemplos
 
@@ -96,4 +94,31 @@ $db = new db("tb_funcionario");
 
 // true|false
 $retorno = $db->delete($id);
+```
+
+# Criação\Modificação de banco de dados
+```php
+//é possivel criar uma tabela seguindo o seguinte exemplo:
+try{
+$agendamentoTb = new tableDb("agendamento",comment:"Tabela de agendamentos");
+$agendamentoTb->beginTransaction();
+$agendamentoTb->addColumn((new columnDb("id","INT"))->isPrimary()->setComment("ID agendamento"))
+            ->addColumn((new columnDb("id_agenda","INT"))->isNotNull()->isForeingKey($agendaTb)->setComment("ID da tabela agenda"))
+            ->addColumn((new columnDb("id_usuario","INT"))->isForeingKey($usuarioTb)->setComment("ID da tabela usuario"))
+            ->addColumn((new columnDb("id_cliente","INT"))->isForeingKey($clienteTb)->setComment("ID da tabela cliente"))
+            ->addColumn((new columnDb("id_funcionario","INT"))->isForeingKey($funcionarioTb)->setComment("ID da tabela funcionario"))
+            ->addColumn((new columnDb("titulo","VARCHAR",150))->isUnique()->isNotNull()->setComment("titulo do agendamento"))
+            ->addColumn((new columnDb("dt_ini","DATETIME"))->isNotNull()->setComment("Data inicial de agendamento"))
+            ->addColumn((new columnDb("dt_fim","DATETIME"))->isNotNull()->setComment("Data final de agendamento"))
+            ->addColumn((new columnDb("cor","VARCHAR",7))->isNotNull()->setComment("Cor do agendamento"))
+            ->addColumn((new columnDb("total","DECIMAL","10,2"))->isNotNull()->setComment("Total do agendamento"))
+            ->addColumn((new columnDb("id_status","INT"))->isForeingKey($statusTb)->isNotNull()->setComment("id do Status do agendamento"))
+            ->addColumn((new columnDb("obs","VARCHAR",400))->setComment("Observações do agendamento"));
+$agendamentoTb->execute($recreate);
+$agendamentoTb->commit();
+}catch(Exception $e) {
+        $agendamentoTb->rollBack();
+        echo $e->getMessage()."<br>";
+}
+//apos criado sempre que esse codigo for execultado irá verificar se alguma informação da tabela precisa ser atualizada
 ```
