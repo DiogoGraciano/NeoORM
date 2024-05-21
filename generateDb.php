@@ -1,8 +1,10 @@
 <?php
 require __DIR__.DIRECTORY_SEPARATOR."configDb.php";
+require str_replace("\app\db","",__DIR__.DIRECTORY_SEPARATOR."vendor".DIRECTORY_SEPARATOR."autoload.php");
 
 use app\db\tableDb;
 use app\db\columnDb;
+use app\db\db;
 
 $recreate = false;
 
@@ -178,6 +180,24 @@ $statusTb->commit();
 }
 
 try{
+        $status = new db("status");
+        $status->beginTransaction();
+        $object = $status->getObject();
+        $object->nome = "Agendado";
+        $status->store($object);
+        $object->nome = "Finalizado";
+        $status->store($object);
+        $object->nome = "Não atendido";
+        $status->store($object);
+        $object->nome = "Cancelado";
+        $status->store($object);
+        $status->commit();
+}catch(Exception $e) {
+        $status->rollBack();
+        echo $e->getMessage()."<br>";
+}
+
+try{
 $agendamentoTb = new tableDb("agendamento",comment:"Tabela de agendamentos");
 $agendamentoTb->beginTransaction();
 $agendamentoTb->addColumn((new columnDb("id","INT"))->isPrimary()->setComment("ID agendamento"))
@@ -188,10 +208,11 @@ $agendamentoTb->addColumn((new columnDb("id","INT"))->isPrimary()->setComment("I
             ->addColumn((new columnDb("titulo","VARCHAR",150))->isNotNull()->setComment("titulo do agendamento"))
             ->addColumn((new columnDb("dt_ini","DATETIME"))->isNotNull()->setComment("Data inicial de agendamento"))
             ->addColumn((new columnDb("dt_fim","DATETIME"))->isNotNull()->setComment("Data final de agendamento"))
-            ->addColumn((new columnDb("cor","VARCHAR",7))->isNotNull()->setComment("Cor do agendamento"))
+            ->addColumn((new columnDb("cor","VARCHAR",7))->setDefaut("#4267b2")->isNotNull()->setComment("Cor do agendamento"))
             ->addColumn((new columnDb("total","DECIMAL","10,2"))->isNotNull()->setComment("Total do agendamento"))
             ->addColumn((new columnDb("id_status","INT"))->isForeingKey($statusTb)->isNotNull()->setComment("id do Status do agendamento"))
-            ->addColumn((new columnDb("obs","VARCHAR",400))->setComment("Observações do agendamento"));
+            ->addColumn((new columnDb("obs","VARCHAR",400))->setComment("Observações do agendamento"))
+            ->addIndex("getEventsbyFuncionario",["dt_ini","dt_fim","id_agenda","id_funcionario"]);
 $agendamentoTb->execute($recreate);
 $agendamentoTb->commit();
 }catch(Exception $e) {

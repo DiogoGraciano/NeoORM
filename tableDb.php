@@ -110,7 +110,8 @@ class tableDb extends connectionDb
                 else 
                     throw new Exception("Coluna é invalida: ".$column); 
             }
-            $this->indexs[$name] = "CREATE INDEX {$name} ON {$this->table} (".implode(",",$columnsFinal).";";
+            $this->indexs[$name]["columns"] = $columnsFinal;
+            $this->indexs[$name]["sql"] = "CREATE INDEX {$name} ON {$this->table} (".implode(",",$columnsFinal).");";
         }
         else{
             throw new Exception("É preciso ter pelo menos uma coluna para adicionar o um index");
@@ -125,14 +126,14 @@ class tableDb extends connectionDb
 
         $sql = rtrim(trim($sql),",");
 
-        $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate}; COMMENT='{$this->comment}'";
+        $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$this->comment}';";
 
         if($this->isAutoIncrement){
-            $sql .= "ALTER TABLE {$this->table} AUTO_INCREMENT = 1";
+            $sql .= "ALTER TABLE {$this->table} AUTO_INCREMENT = 1;";
         }
         
         foreach ($this->indexs as $index) {
-            $sql .= $index;
+            $sql .= $index["sql"];
         }
 
         $sql = $this->pdo->prepare($sql);
@@ -190,7 +191,7 @@ class tableDb extends connectionDb
                     if(isset($ForeingkeyName[0]))
                         $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
                     else 
-                        throw new Exception("Não foi possivel remover FOREIGN KEY para atualizar a coluna");
+                        throw new Exception($this->table.": Não foi possivel remover FOREIGN KEY para atualizar a coluna");
                 }
 
                 if(!$inDb || ($column->primary && $columnInformation[0]->COLUMN_KEY != "PRI")){
@@ -202,7 +203,9 @@ class tableDb extends connectionDb
                 }
 
                 if(!$inDb || ($column->foreingKey && $columnInformation[0]->COLUMN_KEY != "MUL")){
-                    $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
+                    $ForeingkeyName = $this->getForeingKeyName($column->foreingTable);
+                    if(!isset($ForeingkeyName[0]))
+                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
                 }
             }
         }
@@ -229,15 +232,45 @@ class tableDb extends connectionDb
         if($this->indexs){
             $indexInformation = $this->getIndexInformation();
             if($indexInformation){
+
+                $changed = [];
                 foreach ($indexInformation as $indexDb){
                     if(!in_array($indexDb,array_keys($this->indexs))){
                         $sql .= "ALTER TABLE {$this->table} DROP INDEX {$indexDb};";
+                        continue;
+                    }
+
+                    if(in_array($indexDb,array_keys($this->indexs))){
+                        $columns = $this->getIndexColumns($indexDb);
+                        if(count($columns)){
+                            foreach ($this->indexs[$indexDb]["columns"] as $column){
+                                if(!in_array($column,$columns)){
+                                    $changed[] = $indexDb;
+                                    $sql .= "ALTER TABLE {$this->table} DROP INDEX {$indexDb};";
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
 
-                foreach (array_keys($this->indexs) as $index) {
-                    if(!in_array($index,$indexInformation))
-                        $sql .= $this->indexs[$index];
+                if($changed){
+                    $sql .= "SET FOREIGN_KEY_CHECKS = 0;";
+                    foreach ($changed as $index){
+                        $sql .= $this->indexs[$index]["sql"];
+                    }
+                    $sql .= "SET FOREIGN_KEY_CHECKS = 1;";
+                }
+                else{
+                    foreach (array_keys($this->indexs) as $index) {
+                        if(!in_array($index,$indexInformation))
+                            $sql .= $this->indexs[$index]["sql"];
+                    }
+                }
+
+            }else{
+                foreach ($this->indexs as $index) {
+                    $sql .= $index["sql"];
                 }
             }
         }
@@ -302,6 +335,21 @@ class tableDb extends connectionDb
     private function getIndexInformation()
     {
         $sql = $this->pdo->prepare('SELECT INDEX_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" GROUP BY INDEX_NAME HAVING COUNT(INDEX_NAME) > 1');
+       
+        $sql->execute();
+
+        $rows = [];
+
+        if ($sql->rowCount() > 0) {
+            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+        }
+
+        return $rows;   
+    }
+
+    private function getIndexColumns($indexName)
+    {
+        $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" AND INDEX_NAME = "'.$indexName.'";');
        
         $sql->execute();
 
