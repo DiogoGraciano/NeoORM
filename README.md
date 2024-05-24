@@ -137,5 +137,3 @@ try {
 }
 // Após criado, sempre que este código for executado, irá verificar se alguma informação da tabela precisa ser atualizada.
 ```
-
-Este readme foi melhorado para ser mais claro e organizado, facilitando a compreensão e utilização do NeoORM.
