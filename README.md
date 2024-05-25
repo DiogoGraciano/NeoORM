@@ -115,25 +115,31 @@ $retorno = $db->delete($id);
 ### Criar uma Tabela
 ```php
 try {
-    $agendamentoTb = new tableDb("agendamento", comment: "Tabela de agendamentos");
-    $agendamentoTb->beginTransaction();
-    $agendamentoTb->addColumn((new columnDb("id", "INT"))->isPrimary()->setComment("ID agendamento"))
-                 ->addColumn((new columnDb("id_agenda", "INT"))->isNotNull()->isForeingKey($agendaTb)->setComment("ID da tabela agenda"))
-                 ->addColumn((new columnDb("id_usuario", "INT"))->isForeingKey($usuarioTb)->setComment("ID da tabela usuario"))
-                 ->addColumn((new columnDb("id_cliente", "INT"))->isForeingKey($clienteTb)->setComment("ID da tabela cliente"))
-                 ->addColumn((new columnDb("id_funcionario", "INT"))->isForeingKey($funcionarioTb)->setComment("ID da tabela funcionario"))
-                 ->addColumn((new columnDb("titulo", "VARCHAR", 150))->isUnique()->isNotNull()->setComment("Titulo do agendamento"))
-                 ->addColumn((new columnDb("dt_ini", "DATETIME"))->isNotNull()->setComment("Data inicial do agendamento"))
-                 ->addColumn((new columnDb("dt_fim", "DATETIME"))->isNotNull()->setComment("Data final do agendamento"))
-                 ->addColumn((new columnDb("cor", "VARCHAR", 7))->isNotNull()->setComment("Cor do agendamento"))
-                 ->addColumn((new columnDb("total", "DECIMAL", "10,2"))->isNotNull()->setComment("Total do agendamento"))
-                 ->addColumn((new columnDb("id_status", "INT"))->isForeingKey($statusTb)->isNotNull()->setComment("ID do status do agendamento"))
-                 ->addColumn((new columnDb("obs", "VARCHAR", 400))->setComment("Observações do agendamento"));
-    $agendamentoTb->execute($recreate);
-    $agendamentoTb->commit();
+  transactionManeger::init();
+  transactionManeger::beginTransaction();
+  
+  $agendamentoTb = new tableDb("agendamento",comment:"Tabela de agendamentos");
+  $agendamentoTb->addColumn((new columnDb("id","INT"))->isPrimary()->setComment("ID agendamento"))
+          ->addColumn((new columnDb("id_agenda","INT"))->isNotNull()->isForeingKey($agendaTb)->setComment("ID da tabela agenda"))
+          ->addColumn((new columnDb("id_usuario","INT"))->isForeingKey($usuarioTb)->setComment("ID da tabela usuario"))
+          ->addColumn((new columnDb("id_cliente","INT"))->isForeingKey($clienteTb)->setComment("ID da tabela cliente"))
+          ->addColumn((new columnDb("id_funcionario","INT"))->isForeingKey($funcionarioTb)->setComment("ID da tabela funcionario"))
+          ->addColumn((new columnDb("titulo","VARCHAR",150))->isNotNull()->setComment("titulo do agendamento"))
+          ->addColumn((new columnDb("dt_ini","DATETIME"))->isNotNull()->setComment("Data inicial de agendamento"))
+          ->addColumn((new columnDb("dt_fim","DATETIME"))->isNotNull()->setComment("Data final de agendamento"))
+          ->addColumn((new columnDb("cor","VARCHAR",7))->setDefaut("#4267b2")->isNotNull()->setComment("Cor do agendamento"))
+          ->addColumn((new columnDb("total","DECIMAL","10,2"))->isNotNull()->setComment("Total do agendamento"))
+          ->addColumn((new columnDb("id_status","INT"))->isForeingKey($statusTb)->isNotNull()->setComment("id do Status do agendamento"))
+          ->addColumn((new columnDb("obs","VARCHAR",400))->setComment("Observações do agendamento"))
+          ->addIndex("getEventsbyFuncionario",["dt_ini","dt_fim","id_agenda","id_funcionario"])
+          ->execute($recreate);
+  
+  transactionManeger::commit();
 } catch (Exception $e) {
-    $agendamentoTb->rollBack();
-    echo $e->getMessage();
+  echo $e->getMessage();
+  transactionManeger::rollBack();
 }
 // Após criado, sempre que este código for executado, irá verificar se alguma informação da tabela precisa ser atualizada.
+
+// No arquivo generateDb.php existe um exemplo completo de geração de um banco de dados completo.
 ```
