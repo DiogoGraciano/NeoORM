@@ -36,6 +36,13 @@ class tableDb extends connectionDb
     private $indexs = [];
 
     /**
+     * primary.
+     *
+     * @var array
+    */
+    private $primary = [];
+
+    /**
      * index.
      *
      * @var array
@@ -67,9 +74,8 @@ class tableDb extends connectionDb
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "")
     {
         // Inicia a Conexão
-        if (!$this->pdo)
-            $this->pdo = connectionDb::getInstance()->startConnection();
-
+        $this->pdo = ConnectionDb::getConnection();
+        
         $this->engine = $engine;
 
         $this->collate = $collate;
@@ -84,7 +90,10 @@ class tableDb extends connectionDb
     public function addColumn(columnDb $column){
         $column = $column->getColumn();
 
-        $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment}",$column->primary,$column->unique,$column->foreingKey," "];
+        if($column->primary)
+            $this->primary[] = $column->name;
+
+        $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment}",$column->unique,$column->foreingKey," "];
 
         $this->columns[$column->name] = $column;
 
@@ -112,6 +121,8 @@ class tableDb extends connectionDb
             }
             $this->indexs[$name]["columns"] = $columnsFinal;
             $this->indexs[$name]["sql"] = "CREATE INDEX {$name} ON {$this->table} (".implode(",",$columnsFinal).");";
+
+            return $this;
         }
         else{
             throw new Exception("É preciso ter pelo menos uma coluna para adicionar o um index");
@@ -124,7 +135,9 @@ class tableDb extends connectionDb
             $sql .= str_replace(" , ","",implode(",",array_filter($column->columnSql)));
         }
 
-        $sql = rtrim(trim($sql),",");
+        $sql = trim($sql);
+
+        $sql .= "PRIMARY KEY (".implode(",",$this->primary).")";
 
         $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$this->comment}';";
 
@@ -137,7 +150,9 @@ class tableDb extends connectionDb
         }
 
         $sql = $this->pdo->prepare($sql);
-
+        if (!$sql) {
+            throw new \Exception("Erro ao preparar a consulta: " . implode(", ", $this->pdo->errorInfo()));
+        }
         $sql->execute();
     }
 
@@ -156,7 +171,7 @@ class tableDb extends connectionDb
         }
 
         foreach ($table as $columnDb){
-            if(!in_array($columnDb,array_keys($this->columns))){
+            if(!in_array($columnDb["COLUMN_NAME"],array_keys($this->columns))){
                 $sql .= "ALTER TABLE {$this->table} DROP COLUMN {$columnDb};";
                 break;
             }  
@@ -166,48 +181,72 @@ class tableDb extends connectionDb
 
             $inDb = false;
             foreach ($table as $columnDb){
-                if($columnDb == $column->name){
+                if($columnDb["COLUMN_NAME"] == $column->name){
                     $inDb = true;
                     break;
                 }
             }
 
-            $columnInformation = $this->getColumnInformation($column->name);
+            $columnInformation = array_filter($table,fn($key) => in_array($column->name,$table[$key]),ARRAY_FILTER_USE_KEY);
+            $primaryKeyDb = array_column(array_filter($table,fn($key) => in_array("PRI",$table[$key]),ARRAY_FILTER_USE_KEY),"COLUMN_NAME");
 
-            if(!$inDb || isset($columnInformation[0])){
+            if(!$inDb || $columnInformation){
+
+                $columnInformation = $columnInformation[array_key_first($columnInformation)];
                 
                 !$inDb?$operation = "ADD":$operation = "MODIFY";
                
                 $changed = false;
-                if(!$inDb || strtolower($column->type) != $columnInformation[0]->COLUMN_TYPE || 
-                    ($columnInformation[0]->IS_NULLABLE == "YES" && $column->null) || 
-                    $columnInformation[0]->COLUMN_DEFAULT != $column->defautValue || 
-                    $columnInformation[0]->COLUMN_COMMENT != $column->commentValue){
+                if(!$inDb || strtolower($column->type) != $columnInformation["COLUMN_TYPE"] || 
+                    ($columnInformation["IS_NULLABLE"] == "YES" && $column->null) || 
+                    $columnInformation["COLUMN_DEFAULT"] != $column->defautValue || 
+                    $columnInformation["COLUMN_COMMENT"] != $column->commentValue){
                     $changed = true;
                     $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment};";
                 }
-                if($inDb && ($column->foreingKey && $columnInformation[0]->COLUMN_KEY == "MUL") && $changed){
-                    $ForeingkeyName = $this->getForeingKeyName($column->foreingTable);
+                if($inDb && ($column->foreingKey && $columnInformation["COLUMN_KEY"] == "MUL") && $changed){
+                    $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(isset($ForeingkeyName[0]))
                         $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
                     else 
-                        throw new Exception($this->table.": Não foi possivel remover FOREIGN KEY para atualizar a coluna");
+                        throw new Exception($this->table.": Não foi possivel remover FOREIGN KEY para atualizar a coluna ".$column->name);
                 }
-
-                if(!$inDb || ($column->primary && $columnInformation[0]->COLUMN_KEY != "PRI")){
-                    $sql .= "ALTER TABLE {$this->table} ADD PRIMARY KEY ({$column->name});";
-                }
-
-                if(!$inDb || ($column->unique && $columnInformation[0]->COLUMN_KEY != "UNI")){
+                if(!$inDb || ($column->unique && $columnInformation["COLUMN_KEY"] != "UNI")){
                     $sql .= "ALTER TABLE {$this->table} ADD UNIQUE ({$column->name});";
                 }
-
-                if(!$inDb || ($column->foreingKey && $columnInformation[0]->COLUMN_KEY != "MUL")){
-                    $ForeingkeyName = $this->getForeingKeyName($column->foreingTable);
+                if(!$column->unique && $columnInformation["COLUMN_KEY"] == "UNI"){
+                    $sql .= "ALTER TABLE {$this->table} DROP INDEX ({$column->name});";
+                }
+                if(!$inDb || ($column->foreingKey && $columnInformation["COLUMN_KEY"] != "MUL")){
+                    $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(!isset($ForeingkeyName[0]))
                         $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
                 }
+                if(!$column->foreingKey && $columnInformation["COLUMN_KEY"] == "MUL"){
+                    $ForeingkeyName = $this->getForeingKeyName($column->name);
+                    if(isset($ForeingkeyName[0]))
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY ({$ForeingkeyName[0]});".$sql;
+                }
             }
+        }
+
+        $primaryChanged = false;
+        foreach ($this->primary as $primary){
+            if(!in_array($primary,$primaryKeyDb)){
+                $primaryChanged = true;
+                break;
+            }
+        }
+
+        foreach ($primaryKeyDb as $primary){
+            if(!in_array($primary,$this->primary)){
+                $primaryChanged = true;
+                break;
+            }
+        }
+
+        if($primaryChanged){
+            $sql .= "ALTER TABLE {$this->table} DROP PRIMARY KEY,ADD PRIMARY KEY(".implode(",",$this->primary).");";
         }
 
         $tableInformation = $this->getTableInformation();
@@ -277,8 +316,12 @@ class tableDb extends connectionDb
 
         if($sql){
             $sql = $this->pdo->prepare($sql);
-
-            $sql->execute();
+            if (!$sql) {
+                throw new \Exception("Erro ao preparar a sql: " . implode(", ", $this->pdo->errorInfo()));
+            }
+            if (!$sql->execute()){
+                throw new \Exception("Erro ao executar o sql: " . implode(", ", $stmt->errorInfo()));
+            }
         }
     }
 
@@ -289,29 +332,14 @@ class tableDb extends connectionDb
     //Pega as colunas da tabela e tranforma em Objeto
     private function getColumnsTable()
     {
-        $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'"');
+        $sql = $this->pdo->prepare('SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,COLUMN_KEY,IS_NULLABLE,COLUMN_DEFAULT,COLUMN_COMMENT FROM information_schema.columns WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'"');
        
         $sql->execute();
 
         $rows = [];
 
         if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
-        }
-
-        return $rows;   
-    }
-
-    private function getColumnInformation($column)
-    {
-        $sql = $this->pdo->prepare('SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,COLUMN_KEY,IS_NULLABLE,COLUMN_DEFAULT,COLUMN_COMMENT FROM information_schema.columns WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" AND COLUMN_NAME = "'.$column.'" LIMIT 1');
-       
-        $sql->execute();
-
-        $rows = [];
-
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_CLASS, 'stdClass');
+            $rows = $sql->fetchAll(\PDO::FETCH_ASSOC);
         }
 
         return $rows;   
@@ -362,8 +390,8 @@ class tableDb extends connectionDb
         return $rows;   
     }
 
-    private function getForeingKeyName($ForeingkeyTable){
-        $sql = $this->pdo->prepare('SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" AND REFERENCED_TABLE_NAME = "'.$ForeingkeyTable.'" LIMIT 1');
+    private function getForeingKeyName($column){
+        $sql = $this->pdo->prepare('SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" AND COLUMN_NAME = "'.$column.'" AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1');
        
         $sql->execute();
 
