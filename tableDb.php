@@ -215,7 +215,7 @@ class tableDb extends connectionDb
                     $sql .= "ALTER TABLE {$this->table} ADD UNIQUE ({$column->name});";
                 }
                 if(!$column->unique && $columnInformation["COLUMN_KEY"] == "UNI"){
-                    $sql .= "ALTER TABLE {$this->table} DROP INDEX ({$column->name});";
+                    $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
                 if(!$inDb || ($column->foreingKey && $columnInformation["COLUMN_KEY"] != "MUL")){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
