@@ -1,5 +1,6 @@
 <?php
 namespace app\db;
+use app\classes\logger;
 use Exception;
 
 /**
@@ -41,6 +42,13 @@ class db
      * @var array
     */
     private $joins =[];
+
+    /**
+     * debug está ativo?.
+     *
+     * @var array
+    */
+    private $debug = false;
 
     /**
      * array com os propriedades informadas.
@@ -124,7 +132,7 @@ class db
      * 
      * @return mixed Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
      */
-    private function getlastIdBd()
+    private function getlastIdBd():array
     {
         $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
        
@@ -138,6 +146,8 @@ class db
         }
 
         $this->error[] = "Erro: Tabela não encontrada";
+
+        return $rows;
     }
 
     /**
@@ -145,8 +155,22 @@ class db
      * 
      * @return mixed Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
      */
-    public function getLastID(){
+    public function getLastID():int
+    {
         return $this->lastid;
+    }
+
+
+    /**
+     * Set Debug.
+     * 
+     * @return void Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
+     */
+    public function setDebug():DB
+    {
+        $this->debug = true;
+
+        return $this;
     }
 
      /**
@@ -154,7 +178,7 @@ class db
      * 
      * @return array Retorna um array contendo os erros.
      */
-    public function getError()
+    public function getError():array
     {
         return $this->error;
     }
@@ -164,7 +188,7 @@ class db
      * 
      * @return object Retorna o objeto da tabela.
      */
-    public function getObject()
+    public function getObject():object
     {
         return $this->object;
     }
@@ -174,13 +198,13 @@ class db
      * 
      * @return array Retorna um array das colunas.
     */
-    public function getColumns()
+    public function getColumns():array
     {
         return $this->columns;
     }
 
     //Pega as colunas da tabela e tranforma em Objeto
-    private function getObjectTable()
+    private function getObjectTable():object
     {
         $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
        
@@ -207,7 +231,7 @@ class db
      * @param string $sql_instruction A instrução SQL a ser executada.
      * @return array Retorna um array contendo os registros selecionados.
      */
-    public function selectInstruction(string $sql_instruction)
+    public function selectInstruction(string $sql_instruction):array
     {
         try {
             $sql = $this->pdo->prepare($sql_instruction);
@@ -217,16 +241,22 @@ class db
             
             $sql->execute();
 
+            if ($this->debug)
+                $sql->debugDumpParams();
+
             $rows = [];
 
             if ($sql->rowCount() > 0) {
                 $rows = $sql->fetchAll(\PDO::FETCH_CLASS, 'stdClass');
-            }
-        
+            }     
+
             return $rows;
+
         } catch (\Exception $e) {
             $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
         }
+
+        return [];
     }
     
     /**
@@ -234,7 +264,7 @@ class db
      * 
      * @return array Retorna um array contendo todos os registros da tabela.
      */
-    public function selectAll()
+    public function selectAll():array
     {
         $sql = "SELECT * FROM " . $this->table;
         $sql .= implode('', $this->joins);
@@ -256,7 +286,7 @@ class db
      * @param string ...$columns Colunas a serem selecionadas.
      * @return array Retorna um array contendo os registros selecionados.
      */
-    public function selectColumns(...$columns)
+    public function selectColumns(...$columns):array
     {
         $sql = "SELECT ";
         $sql .= implode(",",$columns);  
@@ -280,7 +310,7 @@ class db
      * @param object $values Objeto contendo os valores a serem salvos.
      * @return bool|int Retorna id do ultimo registro inserido se a operação foi bem-sucedida, caso contrário, retorna false.
     */
-    public function store(\stdClass $values)
+    public function store(\stdClass $values):bool
     {
         try {
             if ($values) {
@@ -341,6 +371,10 @@ class db
                 }
 
                 $sql->execute();
+
+                if ($this->debug)
+                    $sql->debugDumpParams();
+
                 $this->lastid = $values[$this->columns[0]];
                 $this->clean();
                 return true;
@@ -349,6 +383,7 @@ class db
         } catch (\Exception $e) {
             $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
         }
+        return false;
     }    
     /**
      * Salva um registro na tabela com múltiplas chaves primárias.
@@ -356,7 +391,7 @@ class db
      * @param object $values Objeto contendo os valores a serem salvos.
      * @return bool Retorna true se a operação foi bem-sucedida, caso contrário, retorna false.
     */
-    public function storeMutiPrimary(\stdClass $values){
+    public function storeMutiPrimary(\stdClass $values):bool{
         try {
             if ($values) {
                 $values = (array)$values;
@@ -382,12 +417,17 @@ class db
                     $sql->bindParam($key,$data[0],$data[1]);
                 }
                 $sql->execute();
+
+                if ($this->debug)
+                    $sql->debugDumpParams();
+
                 $this->clean();
                 return true;
             }
         } catch (\Exception $e) {
             $this->error[] = 'Tabela: '.$this->table.' Erro: '.$e->getMessage();
         }
+        return false;
     }
 
     /**
@@ -396,13 +436,17 @@ class db
      * @param int $id O ID do registro a ser deletado.
      * @return bool Retorna true se a operação foi bem-sucedida, caso contrário, retorna false.
     */
-    public function delete(int $id)
+    public function delete(int $id):bool
     {
         try {
             if ($id){
                 $sql = $this->pdo->prepare("DELETE FROM " . $this->table . " WHERE " . $this->columns[0] . "=?");
                 $sql->bindParam(1,$id,\PDO::PARAM_INT);
                 $sql->execute();
+
+                if ($this->debug)
+                    $sql->debugDumpParams();
+
                 return true;
             }
             $this->error[] = 'Tabela: '.$this->table.' Erro: ID Invalido';
@@ -417,7 +461,7 @@ class db
      * 
      * @return bool Retorna true se a operação for bem-sucedida, false caso contrário.
      */
-    public function deleteByFilter()
+    public function deleteByFilter():bool
     {
         try {
             $sql = "DELETE FROM " . $this->table;
@@ -434,12 +478,16 @@ class db
             }
 
             $stmt->execute();
+
+            if ($this->debug)
+                $sql->debugDumpParams();
+
             $this->clean();
             return true;
         } catch (Exception $e) {
             $this->error[] = 'Tabela: ' . $this->table . ' Erro: ' .  $e->getMessage();
-            return false;
         }
+        return false;
     }
 
     /**
@@ -451,7 +499,7 @@ class db
      * @param string $operator Operador lógico (AND ou OR).
      * @return db Retorna a instância atual da classe.
      */
-    public function addFilter($field,$logicalOperator,$value,$operatorCondition = Db::AND)
+    public function addFilter($field,$logicalOperator,$value,$operatorCondition = Db::AND):DB
     {
         $operatorCondition = strtoupper(trim($operatorCondition));
         if (!in_array($operatorCondition, [self::AND, self::OR])) {
@@ -477,7 +525,8 @@ class db
      * @param string $order Tipo de ordenação (ASC ou DESC).
      * @return db Retorna a instância atual da classe.
      */
-    public function addOrder(string $column,string $order="DESC"){
+    public function addOrder(string $column,string $order="DESC"):DB
+    {
         $this->propertys[] = " ORDER by ".$column." ".$order;
 
         return $this;
@@ -490,7 +539,8 @@ class db
      * @param int $limitFim Índice final do limite (opcional).
      * @return $this Retorna a instância atual da classe.
      */
-    public function addLimit(int $limitIni,int $limitFim=0){
+    public function addLimit(int $limitIni,int $limitFim=0):DB
+    {
         if ($limitFim){
             $this->propertys[] = " LIMIT {$limitIni},{$limitFim}";
         }else
@@ -505,7 +555,8 @@ class db
      * @param string $columns Colunas para agrupamento.
      * @return $this Retorna a instância atual da classe.
      */
-    public function addGroup(string $columns){
+    public function addGroup(string $columns):DB
+    {
         $this->propertys[] = " GROUP by ".$columns;
 
         return $this;
@@ -522,7 +573,7 @@ class db
      * @param string $alias da tabeça.
      * @return $this Retorna a instância atual da classe.
      */
-    public function addJoin($typeJoin, $table, $columTable, $columRelation, $logicalOperator = '=', $alias = null)
+    public function addJoin($typeJoin, $table, $columTable, $columRelation, $logicalOperator = '=', $alias = null):DB
     {
         $typeJoin = strtoupper(trim($typeJoin));
         if (!in_array($typeJoin, ["LEFT", "RIGHT", "INNER", "OUTER", "FULL OUTER", "LEFT OUTER", "RIGHT OUTER"])) {
@@ -538,7 +589,8 @@ class db
     /**
      * Limpa as propriedades da classe após a execução de uma operação.
      */
-    private function clean(){
+    private function clean():void
+    {
         $this->joins = [];
         $this->propertys = [];
         $this->filters = [];
@@ -548,4 +600,3 @@ class db
 
 }
 ?>
-
