@@ -1,6 +1,5 @@
 <?php
 namespace app\db;
-use app\classes\logger;
 use Exception;
 
 /**
@@ -132,13 +131,11 @@ class db
      * 
      * @return mixed Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
      */
-    private function getlastIdBd():array
+    private function getlastIdBd():int|null
     {
         $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
        
         $sql->execute();
-
-        $rows = [];
 
         if ($sql->rowCount() > 0) {
             $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
@@ -147,7 +144,7 @@ class db
 
         $this->error[] = "Erro: Tabela não encontrada";
 
-        return $rows;
+        return null;
     }
 
     /**
@@ -600,3 +597,4 @@ class db
 
 }
 ?>
+
