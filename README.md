@@ -59,9 +59,8 @@ $result = $db->addFilter("nome", "LIKE", "%" . $nome . "%")
 ### Inserir/Atualizar Registros
 
 ```php
-$db = new funcionario;
 
-$values = new StdClass;
+$values = new funcionario;
 
 // Se $values->id for null, vazio, ou 0, tentará realizar um comando INSERT. Caso contrário, tentará um UPDATE.
 $values->id = null; // ou "" ou 0
@@ -77,7 +76,7 @@ $values->hora_almoco_fim = $hora_almoco_fim;
 $values->dias = $dias;
 
 // Retorna false ou o ID do registro
-$retorno = $db->store($values);
+$retorno = $values->store();
 ```
 
 ### Excluir Registros
