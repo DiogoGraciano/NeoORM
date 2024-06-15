@@ -32,7 +32,7 @@ class transactionManeger
             if (!self::$pdo->inTransaction()) {
                 self::$pdo->beginTransaction();
             }
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             throw new Exception("Erro ao iniciar a transação: " . $e->getMessage());
         }
     }
@@ -48,7 +48,7 @@ class transactionManeger
             if (self::$pdo->inTransaction()) {
                 self::$pdo->commit();
             }
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             throw new Exception("Erro ao confirmar a transação: " . $e->getMessage());
         }
     }
@@ -64,7 +64,7 @@ class transactionManeger
             if (self::$pdo->inTransaction()) {
                 self::$pdo->rollBack();
             }
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             throw new Exception("Erro ao desfazer a transação: " . $e->getMessage());
         }
     }

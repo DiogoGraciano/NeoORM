@@ -103,9 +103,8 @@ $statusTb->addColumn((new columnDb("id","INT"))->isPrimary()->setComment("ID age
         ->addColumn((new columnDb("nome","VARCHAR",250))->isNotNull()->setComment("Status do agendamento"))
         ->execute($recreate);
 
-$status = new db("status");
-if(!$status->addLimit(1)->selectColumns("id")){
-        $object = $status->getObject();
+$object = new db("status");
+if(!$object->addLimit(1)->selectColumns("id")){
         $object->nome = "Agendado";
         $status->store($object);
         $object->nome = "Finalizado";

@@ -1,6 +1,8 @@
 <?php
 namespace app\db;
 use Exception;
+use stdClass;
+
 
 /**
  * Classe base para interação com o banco de dados.
@@ -17,9 +19,9 @@ class db
     /**
      * Objeto da tabela.
      *
-     * @var object
+     * @var array
     */
-    private $object;
+    private $object = [];
 
     /**
      * array de colunas da tabela.
@@ -27,13 +29,6 @@ class db
      * @var array
     */
     private $columns;
-
-    /**
-     * array com os erros ocorridos.
-     *
-     * @var array
-    */
-    private $error = [];
 
     /**
      * array com os joins informados.
@@ -118,12 +113,36 @@ class db
 
         // Seta Tabela
         $this->table = $table;
+    }
 
-        // Gera Objeto da tabela
-        $this->object = $this->getObjectTable();
+    public function __set($name,$value)
+    {
+        return $this->object[$name] = $value;
+    }
 
-        // Transforma as colunas da tabela em uma array
-        $this->columns = array_keys(get_object_vars($this->object));      
+    public function __get($name)
+    {
+        if (array_key_exists($name, $this->object)) {
+            return $this->object[$name];
+        }
+
+        $trace = debug_backtrace();
+        trigger_error(
+            'Column not found: ' . $name .
+            ' in ' . $trace[0]['file'] .
+            ' on line ' . $trace[0]['line'],
+            E_USER_NOTICE);
+        return null;
+    }
+
+    public function __isset($name)
+    {
+        return isset($this->object[$name]);
+    }
+
+    public function __unset($name)
+    {
+        unset($this->object[$name]);
     }
 
     /**
@@ -131,7 +150,7 @@ class db
      * 
      * @return mixed Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
      */
-    private function getlastIdBd():int|null
+    private function getlastIdBd():int
     {
         $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
        
@@ -142,9 +161,7 @@ class db
             return $rows[0];
         }
 
-        $this->error[] = "Erro: Tabela não encontrada";
-
-        return null;
+        throw new Exception('Tabela: '.$this->table.' tabela não encontrada');
     }
 
     /**
@@ -170,24 +187,32 @@ class db
         return $this;
     }
 
-     /**
-     * Retorna os erros gerados durante a execução das operações.
-     * 
-     * @return array Retorna um array contendo os erros.
-     */
-    public function getError():array
-    {
-        return $this->error;
-    }
-
     /**
      * Retorna o objeto da tabela.
      * 
      * @return object Retorna o objeto da tabela.
      */
-    public function getObject():object
+    public function getArrayData():array
     {
         return $this->object;
+    }
+
+    /**
+     * Seta as o object com as colunas da tabela vazias.
+     * 
+     * @return DB Retorna a instacia da classe.
+     */
+    protected function setObjectNull():DB
+    {
+        $this->object = [];
+
+        $this->getColumnTable();
+
+        foreach ($this->columns as $column){
+            $this->object[$column] = null;
+        }
+
+        return $this;
     }
 
     /**
@@ -197,29 +222,27 @@ class db
     */
     public function getColumns():array
     {
+        $this->getColumnTable();
+
         return $this->columns;
     }
 
     //Pega as colunas da tabela e tranforma em Objeto
-    private function getObjectTable():object
+    private function getColumnTable():void
     {
-        $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
-       
-        $sql->execute();
+        if(!$this->columns){
+            $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
+        
+            $sql->execute();
 
-        $rows = [];
+            $rows = [];
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
-            $object = new \stdClass;
-            foreach ($rows as $row) {
-                $object->$row = null;
+            if ($sql->rowCount() > 0) {
+                $this->columns = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+            }else{
+                throw new Exception('Tabela: '.$this->table.' tabela não encontrada');
             }
-            return $object;
         }
-
-        $this->error[] = "Erro: Tabela não encontrada";
-        return new \StdClass;
     }
 
     /**
@@ -244,13 +267,13 @@ class db
             $rows = [];
 
             if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_CLASS, 'stdClass');
-            }     
+                $rows = $sql->fetchAll(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,get_class($this));
+            }    
 
             return $rows;
 
         } catch (\Exception $e) {
-            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
 
         return [];
@@ -307,22 +330,30 @@ class db
      * @param object $values Objeto contendo os valores a serem salvos.
      * @return bool|int Retorna id do ultimo registro inserido se a operação foi bem-sucedida, caso contrário, retorna false.
     */
-    public function store(\stdClass $values):bool
+    public function store():bool
     {
         try {
-            if ($values) {
-                $values = (array)$values;
+            // Gera Objeto da tabela
+            $this->getColumnTable();
+
+            foreach ($this->columns as $columns){
+                $columnsDb[$columns] = true;
+            }
+
+            if ($this->object && !isset($this->object[0])) {
+                $objectFilter = array_intersect_key($this->object, $columnsDb);
+
                 if (!isset($values[$this->columns[0]]) || !$values[$this->columns[0]]) {
                     // Incrementando o ID
-                    $values[$this->columns[0]] = $this->getlastIdBd() + 1;
+                    $objectFilter[$this->columns[0]] = $this->getlastIdBd() + 1;
 
                     // Montando a instrução SQL
                     $sql_instruction = "INSERT INTO {$this->table} (";
-                    $keysBD = implode(",", array_keys($values));
+                    $keysBD = implode(",", array_keys($objectFilter));
                     $valuesBD = "";
 
                     // Preparando os valores para bind e montando a parte dos valores na instrução SQL
-                    foreach ($values as $key => $data) {
+                    foreach ($objectFilter as $key => $data) {
                         $valuesBD .= "?,";
                         $this->valuesBind[$this->counterBind] = [
                             $data,
@@ -334,9 +365,9 @@ class db
                     $sql_instruction .= $keysBD . ") VALUES (";
                     $valuesBD = rtrim($valuesBD, ",");
                     $sql_instruction .= $valuesBD . ");";
-                } elseif (isset($values[$this->columns[0]]) && $values[$this->columns[0]]) {
+                } elseif (isset($objectFilter[$this->columns[0]]) && $objectFilter[$this->columns[0]]) {
                     $sql_instruction = "UPDATE {$this->table} SET ";
-                    foreach ($values as $key => $data) {
+                    foreach ($objectFilter as $key => $data) {
                         if ($key === $this->columns[0]) // Ignorando a primeira coluna (geralmente a chave primária)
                             continue;
 
@@ -355,7 +386,7 @@ class db
                     } else {
                         $sql_instruction .= "{$this->columns[0]}=?";
                         $this->valuesBind[$this->counterBind] = [
-                            $values[$this->columns[0]],
+                            $objectFilter[$this->columns[0]],
                             \PDO::PARAM_INT
                         ];
                         $this->counterBind++;
@@ -372,15 +403,14 @@ class db
                 if ($this->debug)
                     $sql->debugDumpParams();
 
-                $this->lastid = $values[$this->columns[0]];
+                $this->lastid = $objectFilter[$this->columns[0]];
                 $this->clean();
                 return true;
             }
-            $this->error[] = "Erro: Valores não informados";
+            throw new Exception('Tabela: '.$this->table." Objeto não está setado");
         } catch (\Exception $e) {
-            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
-        return false;
     }    
     /**
      * Salva um registro na tabela com múltiplas chaves primárias.
@@ -388,16 +418,25 @@ class db
      * @param object $values Objeto contendo os valores a serem salvos.
      * @return bool Retorna true se a operação foi bem-sucedida, caso contrário, retorna false.
     */
-    public function storeMutiPrimary(\stdClass $values):bool{
+    public function storeMutiPrimary():bool{
         try {
-            if ($values) {
-                $values = (array)$values;
+            // Gera Objeto da tabela
+            $this->getColumnTable();
+
+            foreach ($this->columns as $columns){
+                $columnsDb[$columns] = true;
+            }
+
+            if ($this->object && !isset($this->object[0])) {
+                $objectFilter = array_intersect_key($this->object, $columnsDb);
+
+                $objectFilter = array_intersect_key($this->object, $this->columns);
                 $sql_instruction = "INSERT INTO {$this->table} (";
-                $keysBD = implode(",", array_keys($values));
+                $keysBD = implode(",", array_keys($this->object));
                 $valuesBD = "";
 
                 // Preparando os valores para bind e montando a parte dos valores na instrução SQL
-                foreach ($values as $key => $data) {
+                foreach ($objectFilter as $key => $data) {
                     $valuesBD .= "?,";
                     $this->valuesBind[$this->counterBind] = [
                         $data,
@@ -422,9 +461,9 @@ class db
                 return true;
             }
         } catch (\Exception $e) {
-            $this->error[] = 'Tabela: '.$this->table.' Erro: '.$e->getMessage();
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
-        return false;
+        throw new Exception('Tabela: '.$this->table." Objeto não está setado");
     }
 
     /**
@@ -436,6 +475,8 @@ class db
     public function delete(int $id):bool
     {
         try {
+            $this->getColumnTable();
+
             if ($id){
                 $sql = $this->pdo->prepare("DELETE FROM " . $this->table . " WHERE " . $this->columns[0] . "=?");
                 $sql->bindParam(1,$id,\PDO::PARAM_INT);
@@ -446,11 +487,10 @@ class db
 
                 return true;
             }
-            $this->error[] = 'Tabela: '.$this->table.' Erro: ID Invalido';
+            throw new Exception('Tabela: '.$this->table." ID Precisa ser informado para excluir");
         } catch (\Exception $e) {
-            $this->error[] = 'Tabela: '.$this->table.' Erro: ' .  $e->getMessage();
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
-        return false;
     }
 
     /**
@@ -468,6 +508,9 @@ class db
                     return $i === 0 ? substr($filter, 4) : $filter;
                 }, $this->filters, array_keys($this->filters)));
             }
+            else{
+                throw new Exception('Tabela: '.$this->table.' Filtros devem ser informados');
+            }
 
             $stmt = $this->pdo->prepare($sql);
             foreach ($this->valuesBind as $key => $data) {
@@ -477,12 +520,12 @@ class db
             $stmt->execute();
 
             if ($this->debug)
-                $sql->debugDumpParams();
+                $stmt->debugDumpParams();
 
             $this->clean();
             return true;
         } catch (Exception $e) {
-            $this->error[] = 'Tabela: ' . $this->table . ' Erro: ' .  $e->getMessage();
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
         return false;
     }
@@ -501,6 +544,7 @@ class db
         $operatorCondition = strtoupper(trim($operatorCondition));
         if (!in_array($operatorCondition, [self::AND, self::OR])) {
             $this->error[] = "Filtro inválido";
+            Logger::error("Filtro inválido");
             return $this;
         }
 
@@ -575,6 +619,7 @@ class db
         $typeJoin = strtoupper(trim($typeJoin));
         if (!in_array($typeJoin, ["LEFT", "RIGHT", "INNER", "OUTER", "FULL OUTER", "LEFT OUTER", "RIGHT OUTER"])) {
             $this->error[] = "JOIN inválido";
+            Logger::error("JOIN inválido");
             return $this;
         }
 
