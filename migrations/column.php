@@ -1,12 +1,13 @@
 <?php
-namespace app\db;
+namespace app\db\migrations;
+
 use stdClass;
 use Exception;
 
 /**
  * Classe base para criação do banco de dados.
  */
-class columnDb
+class column
 {
     /**
      * Colunas.
@@ -82,6 +83,7 @@ class columnDb
             $this->column->commentValue = "";
             $this->column->foreingTable = null;
             $this->column->foreingColumn = null;
+            $this->column->foreingTableClass = null;
             $this->column->foreingKey = "";
         }
         else 
@@ -104,10 +106,11 @@ class columnDb
         return $this;
     }
 
-    public function isForeingKey(tableDb $foreingTable,string $foreingColumn = "id"){
+    public function isForeingKey(table $foreingTable,string $foreingColumn = "id"){
         $this->column->foreingKey = "FOREIGN KEY ({$this->column->name}) REFERENCES {$foreingTable->getTable()}({$foreingColumn})";
         $this->column->foreingTable = $foreingTable->getTable();
         $this->column->foreingColumn = $foreingColumn;
+        $this->column->foreingTableClass = $foreingTable;
         return $this;
     }
 

@@ -1,8 +1,14 @@
 <?php
 
-namespace app\db;
+namespace app\db\abstract;
 
-abstract class tableClassAbstract extends db{
+use app\db\db;
+
+/**
+ * Classe base para as classes que representam as tabelas do banco de dados.
+ */
+abstract class model extends db{
+
     public function __construct($table){
         parent::__construct($table);
     }

@@ -1,11 +1,13 @@
 <?php
-namespace app\db;
+namespace app\db\migrations;
+
+use app\db\connection;
 use Exception;
 
 /**
- * Classe base para criação do banco de dados.
+ * Classe base para criação de tabelas no banco de dados.
  */
-class tableDb extends connectionDb
+class table
 {
     /**
      * Nome da tabela.
@@ -64,6 +66,20 @@ class tableDb extends connectionDb
     private $collate = "";
 
 
+   /**
+     * tabela tem foreningKey
+     *
+     * @var bool
+    */
+    private $hasForeingKey = false;
+    
+    /**
+     * array de classes das tabelas fk
+     *
+     * @var bool
+    */
+    private $foreningTablesClass = [];
+
     /**
      * outros comandos.
      *
@@ -74,7 +90,7 @@ class tableDb extends connectionDb
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "")
     {
         // Inicia a Conexão
-        $this->pdo = ConnectionDb::getConnection();
+        $this->pdo = connection::getConnection();
         
         $this->engine = $engine;
 
@@ -87,11 +103,16 @@ class tableDb extends connectionDb
         }
     }
 
-    public function addColumn(columnDb $column){
+    public function addColumn(column $column){
         $column = $column->getColumn();
 
         if($column->primary)
             $this->primary[] = $column->name;
+
+        if($column->foreingKey){
+            $this->hasForeingKey = true;
+            $this->foreningTablesClass[] = $column->foreingTableClass;
+        }
 
         $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment}",$column->unique,$column->foreingKey," "];
 
@@ -130,14 +151,15 @@ class tableDb extends connectionDb
     }
 
     private function create(){
-        $sql = "DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
+        $sql = "SET FOREIGN_KEY_CHECKS = 0; DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
         foreach ($this->columns as $column) {            
             $sql .= str_replace(" , ","",implode(",",array_filter($column->columnSql)));
         }
 
         $sql = trim($sql);
 
-        $sql .= "PRIMARY KEY (".implode(",",$this->primary).")";
+        if($this->primary)
+            $sql .= "PRIMARY KEY (".implode(",",$this->primary).")";
 
         $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$this->comment}';";
 
@@ -149,11 +171,15 @@ class tableDb extends connectionDb
             $sql .= $index["sql"];
         }
 
+        $sql = str_replace(",)",")",$sql)." SET FOREIGN_KEY_CHECKS = 1;";
+
         $sql = $this->pdo->prepare($sql);
         if (!$sql) {
             throw new \Exception("Erro ao preparar a consulta: " . implode(", ", $this->pdo->errorInfo()));
         }
-        $sql->execute();
+        if (!$sql->execute()){
+            throw new \Exception("Erro ao executar o sql: " . implode(", ", $sql->errorInfo()));
+        }
     }
 
     public function execute($recreate = false){
@@ -170,18 +196,19 @@ class tableDb extends connectionDb
             return $this->create();
         }
 
-        foreach ($table as $columnDb){
-            if(!in_array($columnDb["COLUMN_NAME"],array_keys($this->columns))){
-                $sql .= "ALTER TABLE {$this->table} DROP COLUMN {$columnDb};";
+        foreach ($table as $column){
+            if(!in_array($column["COLUMN_NAME"],array_keys($this->columns))){
+                $coluna = $column["COLUMN_NAME"];
+                $sql .= "ALTER TABLE {$this->table} DROP COLUMN {$coluna};";
                 break;
             }  
         }
-        
+
         foreach ($this->columns as $column) {
 
             $inDb = false;
-            foreach ($table as $columnDb){
-                if($columnDb["COLUMN_NAME"] == $column->name){
+            foreach ($table as $tablecolumn){
+                if($tablecolumn["COLUMN_NAME"] == $column->name){
                     $inDb = true;
                     break;
                 }
@@ -320,13 +347,30 @@ class tableDb extends connectionDb
                 throw new \Exception("Erro ao preparar a sql: " . implode(", ", $this->pdo->errorInfo()));
             }
             if (!$sql->execute()){
-                throw new \Exception("Erro ao executar o sql: " . implode(", ", $stmt->errorInfo()));
+                throw new \Exception("Erro ao executar o sql: " . implode(", ", $sql->errorInfo()));
             }
         }
     }
 
+    public function hasForeignKey(){
+        return $this->hasForeingKey;
+    }
+    
+    public function getForeignKeyTablesClasses(){
+        return $this->foreningTablesClass;
+    }
+
     public function getTable(){
         return $this->table;
+    }
+    
+    public function exists()
+    {
+        $sql = $this->pdo->prepare('SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "'.$this->table.'" LIMIT 1');
+        
+        $sql->execute();
+
+        return $sql->rowCount() > 0;   
     }
 
     //Pega as colunas da tabela e tranforma em Objeto

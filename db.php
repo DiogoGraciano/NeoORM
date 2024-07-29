@@ -1,8 +1,6 @@
 <?php
 namespace app\db;
 use Exception;
-use stdClass;
-
 
 /**
  * Classe base para interação com o banco de dados.
@@ -109,7 +107,7 @@ class db
     {
         // Inicia a Conexão
         if (!$this->pdo)
-            $this->pdo = ConnectionDb::getConnection();
+            $this->pdo = connection::getConnection();
 
         // Seta Tabela
         $this->table = $table;
@@ -152,16 +150,22 @@ class db
      */
     private function getlastIdBd():int
     {
-        $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
-       
-        $sql->execute();
+        try{
+            $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
+        
+            $sql->execute();
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
-            return $rows[0];
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+                return $rows[0];
+            }
+            else{
+                return 0;
+            }
+
+        }catch(Exception $e){
+            throw new Exception("Tabela: status ".$e->getMessage());
         }
-
-        throw new Exception('Tabela: '.$this->table.' tabela não encontrada');
     }
 
     /**
@@ -235,8 +239,6 @@ class db
         
             $sql->execute();
 
-            $rows = [];
-
             if ($sql->rowCount() > 0) {
                 $this->columns = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
             }else{
@@ -267,7 +269,7 @@ class db
             $rows = [];
 
             if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,get_class($this));
+                $rows = $sql->fetchAll(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,get_class($this),[$this->table]);
             }    
 
             return $rows;
@@ -343,7 +345,7 @@ class db
             if ($this->object && !isset($this->object[0])) {
                 $objectFilter = array_intersect_key($this->object, $columnsDb);
 
-                if (!isset($values[$this->columns[0]]) || !$values[$this->columns[0]]) {
+                if (!isset($objectFilter[$this->columns[0]]) || !$objectFilter[$this->columns[0]]) {
                     // Incrementando o ID
                     $objectFilter[$this->columns[0]] = $this->getlastIdBd() + 1;
 
@@ -420,6 +422,7 @@ class db
     */
     public function storeMutiPrimary():bool{
         try {
+
             // Gera Objeto da tabela
             $this->getColumnTable();
 
@@ -427,10 +430,10 @@ class db
                 $columnsDb[$columns] = true;
             }
 
-            if ($this->object && !isset($this->object[0])) {
+            if ($this->object) {
+                
                 $objectFilter = array_intersect_key($this->object, $columnsDb);
 
-                $objectFilter = array_intersect_key($this->object, $this->columns);
                 $sql_instruction = "INSERT INTO {$this->table} (";
                 $keysBD = implode(",", array_keys($this->object));
                 $valuesBD = "";
@@ -452,6 +455,7 @@ class db
                 foreach ($this->valuesBind as $key => $data) {
                     $sql->bindParam($key,$data[0],$data[1]);
                 }
+
                 $sql->execute();
 
                 if ($this->debug)
@@ -544,7 +548,6 @@ class db
         $operatorCondition = strtoupper(trim($operatorCondition));
         if (!in_array($operatorCondition, [self::AND, self::OR])) {
             $this->error[] = "Filtro inválido";
-            Logger::error("Filtro inválido");
             return $this;
         }
 
@@ -614,16 +617,15 @@ class db
      * @param string $alias da tabeça.
      * @return $this Retorna a instância atual da classe.
      */
-    public function addJoin($typeJoin, $table, $columTable, $columRelation, $logicalOperator = '=', $alias = null):DB
+    public function addJoin(string $table,string $columnTable,string $columnRelation,String $typeJoin = "INNER",string $logicalOperator = '='):DB
     {
         $typeJoin = strtoupper(trim($typeJoin));
         if (!in_array($typeJoin, ["LEFT", "RIGHT", "INNER", "OUTER", "FULL OUTER", "LEFT OUTER", "RIGHT OUTER"])) {
             $this->error[] = "JOIN inválido";
-            Logger::error("JOIN inválido");
             return $this;
         }
 
-        $join = " " . $typeJoin . " JOIN " . $table . ($alias ? " $alias" : "") . " ON " . $columTable . $logicalOperator . $columRelation . " ";
+        $join = " " . $typeJoin . " JOIN " . $table . " ON " . $columnTable .$logicalOperator .$columnRelation . " ";
         $this->joins[] = $join;
         return $this;
     }
