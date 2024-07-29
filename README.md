@@ -112,33 +112,84 @@ $retorno = $db->delete($id);
 ## Criação/Modificação de Banco de Dados
 
 ### Criar uma Tabela
-```php
-try {
-  transactionManeger::init();
-  transactionManeger::beginTransaction();
-  
-  $agendamentoTb = new tableDb("agendamento",comment:"Tabela de agendamentos");
-  $agendamentoTb->addColumn((new columnDb("id","INT"))->isPrimary()->setComment("ID agendamento"))
-          ->addColumn((new columnDb("id_agenda","INT"))->isNotNull()->isForeingKey($agendaTb)->setComment("ID da tabela agenda"))
-          ->addColumn((new columnDb("id_usuario","INT"))->isForeingKey($usuarioTb)->setComment("ID da tabela usuario"))
-          ->addColumn((new columnDb("id_cliente","INT"))->isForeingKey($clienteTb)->setComment("ID da tabela cliente"))
-          ->addColumn((new columnDb("id_funcionario","INT"))->isForeingKey($funcionarioTb)->setComment("ID da tabela funcionario"))
-          ->addColumn((new columnDb("titulo","VARCHAR",150))->isNotNull()->setComment("titulo do agendamento"))
-          ->addColumn((new columnDb("dt_ini","DATETIME"))->isNotNull()->setComment("Data inicial de agendamento"))
-          ->addColumn((new columnDb("dt_fim","DATETIME"))->isNotNull()->setComment("Data final de agendamento"))
-          ->addColumn((new columnDb("cor","VARCHAR",7))->setDefaut("#4267b2")->isNotNull()->setComment("Cor do agendamento"))
-          ->addColumn((new columnDb("total","DECIMAL","10,2"))->isNotNull()->setComment("Total do agendamento"))
-          ->addColumn((new columnDb("id_status","INT"))->isForeingKey($statusTb)->isNotNull()->setComment("id do Status do agendamento"))
-          ->addColumn((new columnDb("obs","VARCHAR",400))->setComment("Observações do agendamento"))
-          ->addIndex("getEventsbyFuncionario",["dt_ini","dt_fim","id_agenda","id_funcionario"])
-          ->execute($recreate);
-  
-  transactionManeger::commit();
-} catch (Exception $e) {
-  echo $e->getMessage();
-  transactionManeger::rollBack();
-}
-// Após criado, sempre que este código for executado, irá verificar se alguma informação da tabela precisa ser atualizada.
 
-// No arquivo generateDb.php existe um exemplo completo de geração de um banco de dados completo.
+Dentro da pasta tables deverá ser criada uma classe que irá representar sua tabela no banco de dados como o exemplo abaixo;
+
+```php
+<?php
+namespace app\db\tables;
+
+use app\db\abstract\model;
+use app\db\migrations\table;
+use app\db\migrations\column;
+use app\db\db;
+
+class estado extends model {
+    //parametro obrigatorio que irá definir o nome da tabela no banco
+    public const table = "estado";
+
+    //obrigatorio ser dessa forma
+    public function __construct() {
+        parent::__construct(self::table);
+    }
+
+    //metodo responsavel por criar a tabela
+    public static function table(){
+        return (new table(self::table,comment:"Tabela de estados"))
+                ->addColumn((new column("id","INT"))->isPrimary()->setComment("ID da cidade"))
+                ->addColumn((new column("nome","VARCHAR",120))->isNotNull()->setComment("Nome do estado"))
+                ->addColumn((new column("uf","VARCHAR",2))->isNotNull()->setComment("nome da Uf"))
+                ->addColumn((new column("pais","INT"))->isNotNull()->isForeingKey(pais::table())->setComment("id da pais do estado"))
+                ->addColumn((new column("ibge","INT"))->isUnique()->setComment("id do IBJE do estado"))
+                ->addColumn((new column("ddd","VARCHAR",50))->setComment("DDDs separado por , da Uf"));
+    }
+
+    //metodo responsavel por inserir dados iniciais na tabela 
+    public static function seed(){
+        $object = new db(self::table);
+        if(!$object->addLimit(1)->selectColumns("id")){
+            $object->nome = "Acre";
+            $object->uf = "AC";
+            $object->pais = 1;
+            $object->ibge = 12;
+            $object->ddd = "68";
+            $object->store();
+
+            $object->nome = "Alagoas";
+            $object->uf = "AL";
+            $object->pais = 1;
+            $object->ibge = 27;
+            $object->ddd = "82";
+            $object->store();
+
+            $object->nome = "Amapá";
+            $object->uf = "AP";
+            $object->pais = 1;
+            $object->ibge = 16;
+            $object->ddd = "96";
+            $object->store();
+
+            $object->nome = "Amazonas";
+            $object->uf = "AM";
+            $object->pais = 1;
+            $object->ibge = 13;
+            $object->ddd = "92,97";
+            $object->store();
+      }
+  }
+```
+
+Após criado todas as classes
+
+basta chamar a seguinte classe como no exemplo abaixo
+
+```php
+
+<?php
+
+use app\db\migrations\migrate;
+
+//caso o parametro recreate seja verdadeiro irá ser removido todas as tabelas e depois recriadas novamente
+migrate::execute($recrete = false);
+
 ```
