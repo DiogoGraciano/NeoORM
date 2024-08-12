@@ -9,7 +9,7 @@ class agendamentoItem extends model {
     public const table = "agendamento_item";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){

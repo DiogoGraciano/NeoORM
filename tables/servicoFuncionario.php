@@ -9,7 +9,7 @@ class servicoFuncionario extends model {
     public const table = "servico_funcionario";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){

@@ -1,6 +1,7 @@
 <?php
 namespace app\db;
 use Exception;
+use PDO;
 
 /**
  * Classe base para interação com o banco de dados.
@@ -13,6 +14,13 @@ class db
      * @var string
      */
     private $table;
+
+    /**
+     * Classe da tabela.
+     *
+     * @var string
+     */
+    private $class;
 
     /**
      * Objeto da tabela.
@@ -57,13 +65,6 @@ class db
     private $filters =[];
 
     /**
-     * ultimo id inserido ou atualizado na tabela.
-     *
-     * @var mixed
-    */
-    private $lastid;
-
-    /**
      * valores do bindparam.
      *
      * @var mixed
@@ -103,7 +104,7 @@ class db
      * 
      * @param string $table Nome da tabela do banco de dados.
      */
-    function __construct($table)
+    function __construct(string $table,string|null $class = null)
     {
         // Inicia a Conexão
         if (!$this->pdo)
@@ -111,6 +112,9 @@ class db
 
         // Seta Tabela
         $this->table = $table;
+
+        // Seta Classe
+        $this->class = $class;
     }
 
     public function __set($name,$value)
@@ -142,42 +146,6 @@ class db
     {
         unset($this->object[$name]);
     }
-
-    /**
-     * Retorna o último ID de uma tabela.
-     * 
-     * @return mixed Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
-     */
-    private function getlastIdBd():int
-    {
-        try{
-            $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
-        
-            $sql->execute();
-
-            if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
-                return $rows[0];
-            }
-            else{
-                return 0;
-            }
-
-        }catch(Exception $e){
-            throw new Exception("Tabela: status ".$e->getMessage());
-        }
-    }
-
-    /**
-     * Retorna o último ID inserido ou atualizado na tabela.
-     * 
-     * @return mixed Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
-     */
-    public function getLastID():int
-    {
-        return $this->lastid;
-    }
-
 
     /**
      * Set Debug.
@@ -231,22 +199,6 @@ class db
         return $this->columns;
     }
 
-    //Pega as colunas da tabela e tranforma em Objeto
-    private function getColumnTable():void
-    {
-        if(!$this->columns){
-            $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
-        
-            $sql->execute();
-
-            if ($sql->rowCount() > 0) {
-                $this->columns = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
-            }else{
-                throw new Exception('Tabela: '.$this->table.' tabela não encontrada');
-            }
-        }
-    }
-
     /**
      * Seleciona registros com base em uma instrução SQL.
      * 
@@ -256,15 +208,7 @@ class db
     public function selectInstruction(string $sql_instruction):array
     {
         try {
-            $sql = $this->pdo->prepare($sql_instruction);
-            foreach ($this->valuesBind as $key => $data) {
-                $sql->bindParam($key,$data[0],$data[1]);
-            }
-            
-            $sql->execute();
-
-            if ($this->debug)
-                $sql->debugDumpParams();
+            $sql = $this->executeSql($sql_instruction);
 
             $rows = [];
 
@@ -286,6 +230,41 @@ class db
      * 
      * @return array Retorna um array contendo todos os registros da tabela.
      */
+    public function count():int
+    {
+        try {
+            $sql = 'SELECT count(*) FROM ' . $this->table;
+            $sql .= implode('', $this->joins);
+            if ($this->filters) {
+                $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
+                    return $i === 0 ? substr($filter, 4) : $filter;
+                }, $this->filters, array_keys($this->filters)));
+            }
+            $sql .= implode('', $this->propertys);
+
+            $sql = $this->pdo->prepare($sql);
+
+            if($this->valuesBind){
+                foreach ($this->valuesBind as $key => $data) {
+                    $sql->bindParam($key,$data[0],$data[1]);
+                }
+            }
+                
+            $sql->execute();
+
+            $count = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+
+            return isset($count[0])?$count[0]:0;
+        } catch (\Exception $e) {
+            throw new Exception('Tabela: '.$this->table.' Erro ao execultar o count');
+        }
+    }
+
+    /**
+     * Seleciona todos os registros da tabela.
+     * 
+     * @return array Retorna um array contendo todos os registros da tabela.
+     */
     public function selectAll():array
     {
         $sql = "SELECT * FROM " . $this->table;
@@ -298,7 +277,7 @@ class db
         $sql .= implode('', $this->propertys);
 
         $object = $this->selectInstruction($sql);
-        $this->clean();
+
         return $object;
     }
 
@@ -321,7 +300,6 @@ class db
         }
         $sql .= implode('', $this->propertys);
         $object = $this->selectInstruction($sql);
-        $this->clean();
         return $object;
     }
 
@@ -357,11 +335,7 @@ class db
                     // Preparando os valores para bind e montando a parte dos valores na instrução SQL
                     foreach ($objectFilter as $key => $data) {
                         $valuesBD .= "?,";
-                        $this->valuesBind[$this->counterBind] = [
-                            $data,
-                            is_string($data) ? \PDO::PARAM_STR : (is_int($data) || is_float($data) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
-                        ];
-                        $this->counterBind++;
+                        $this->setBind($data);
                     }
                     $keysBD = rtrim($keysBD, ",");
                     $sql_instruction .= $keysBD . ") VALUES (";
@@ -370,15 +344,11 @@ class db
                 } elseif (isset($objectFilter[$this->columns[0]]) && $objectFilter[$this->columns[0]]) {
                     $sql_instruction = "UPDATE {$this->table} SET ";
                     foreach ($objectFilter as $key => $data) {
-                        if ($key === $this->columns[0]) // Ignorando a primeira coluna (geralmente a chave primária)
+                        if ($key === $this->columns[0]) // Ignorando a primeira coluna (chave primária)
                             continue;
 
                         $sql_instruction .= "{$key}=?,";
-                        $this->valuesBind[$this->counterBind] = [
-                            $data,
-                            is_string($data) ? \PDO::PARAM_STR : (is_int($data) || is_float($data) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
-                        ];
-                        $this->counterBind++;
+                        $this->setBind($data);
                     }
                     $sql_instruction = rtrim($sql_instruction, ",") . " WHERE ";
 
@@ -387,26 +357,14 @@ class db
                         $sql_instruction .= implode(" AND ", $this->filters);
                     } else {
                         $sql_instruction .= "{$this->columns[0]}=?";
-                        $this->valuesBind[$this->counterBind] = [
-                            $objectFilter[$this->columns[0]],
-                            \PDO::PARAM_INT
-                        ];
-                        $this->counterBind++;
+                        $this->setBind($objectFilter[$this->columns[0]]);
                     }
                 }
 
-                $sql = $this->pdo->prepare($sql_instruction);
-                foreach ($this->valuesBind as $key => $data) {
-                    $sql->bindParam($key,$data[0],$data[1]);
-                }
+                $this->executeSql($sql_instruction);
 
-                $sql->execute();
+                $this->object[$this->columns[0]] = $objectFilter[$this->columns[0]];
 
-                if ($this->debug)
-                    $sql->debugDumpParams();
-
-                $this->lastid = $objectFilter[$this->columns[0]];
-                $this->clean();
                 return true;
             }
             throw new Exception('Tabela: '.$this->table." Objeto não está setado");
@@ -435,33 +393,21 @@ class db
                 $objectFilter = array_intersect_key($this->object, $columnsDb);
 
                 $sql_instruction = "INSERT INTO {$this->table} (";
-                $keysBD = implode(",", array_keys($this->object));
+                $keysBD = implode(",", array_keys($objectFilter));
                 $valuesBD = "";
 
                 // Preparando os valores para bind e montando a parte dos valores na instrução SQL
-                foreach ($objectFilter as $key => $data) {
+                foreach ($objectFilter as $data) {
                     $valuesBD .= "?,";
-                    $this->valuesBind[$this->counterBind] = [
-                        $data,
-                        is_string($data) ? \PDO::PARAM_STR : (is_int($data) || is_float($data) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
-                    ];
-                    $this->counterBind++;
+                    $this->setBind($data);
                 }
                 $keysBD = rtrim($keysBD, ",");
                 $sql_instruction .= $keysBD . ") VALUES (";
                 $valuesBD = rtrim($valuesBD, ",");
                 $sql_instruction .= $valuesBD . ");";
-                $sql = $this->pdo->prepare($sql_instruction);
-                foreach ($this->valuesBind as $key => $data) {
-                    $sql->bindParam($key,$data[0],$data[1]);
-                }
+               
+                $this->executeSql($sql_instruction);
 
-                $sql->execute();
-
-                if ($this->debug)
-                    $sql->debugDumpParams();
-
-                $this->clean();
                 return true;
             }
         } catch (\Exception $e) {
@@ -482,12 +428,9 @@ class db
             $this->getColumnTable();
 
             if ($id){
-                $sql = $this->pdo->prepare("DELETE FROM " . $this->table . " WHERE " . $this->columns[0] . "=?");
-                $sql->bindParam(1,$id,\PDO::PARAM_INT);
-                $sql->execute();
-
-                if ($this->debug)
-                    $sql->debugDumpParams();
+                $this->setBind($id);
+                
+                $this->executeSql("DELETE FROM " . $this->table . " WHERE " . $this->columns[0] . "= ?");
 
                 return true;
             }
@@ -516,17 +459,8 @@ class db
                 throw new Exception('Tabela: '.$this->table.' Filtros devem ser informados');
             }
 
-            $stmt = $this->pdo->prepare($sql);
-            foreach ($this->valuesBind as $key => $data) {
-                $stmt->bindParam($key, $data[0], $data[1]);
-            }
-
-            $stmt->execute();
-
-            if ($this->debug)
-                $stmt->debugDumpParams();
-
-            $this->clean();
+            $this->executeSql($sql);
+            
             return true;
         } catch (Exception $e) {
             throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
@@ -543,22 +477,36 @@ class db
      * @param string $operator Operador lógico (AND ou OR).
      * @return db Retorna a instância atual da classe.
      */
-    public function addFilter($field,$logicalOperator,$value,$operatorCondition = Db::AND):DB
+    public function addFilter(string $field,string $logicalOperator,mixed $value,string $operatorCondition = db::AND):DB
     {
         $operatorCondition = strtoupper(trim($operatorCondition));
         if (!in_array($operatorCondition, [self::AND, self::OR])) {
-            $this->error[] = "Filtro inválido";
-            return $this;
+            throw new Exception('Tabela: '.$this->table.' Filtro invalido');
         }
 
-        $this->valuesBind[$this->counterBind] = [
-            $value,
-            is_string($value) ? \PDO::PARAM_STR : (is_int($value) || is_float($value) ? \PDO::PARAM_INT : \PDO::PARAM_NULL)
-        ];
-        $this->counterBind++;
+        if(str_contains(strtolower($logicalOperator),"in")){
+            if(!is_array($value))
+                throw new Exception('Tabela: '.$this->table.' Para operadores (IN) o valor precisa ser um array'); 
 
-        $filter = " " . $operatorCondition . " " . $field . " " . $logicalOperator . " ? ";
-        $this->filters[] = $filter;
+            $inValue = "(";
+            foreach ($value as $data) {
+                $this->setBind($data);
+                $inValue .= "?,";
+            }
+
+            $inValue = rtrim($inValue,",");
+            $inValue .= ")";
+
+            $filter = " " . $operatorCondition . " " . $field . " " . $logicalOperator . " " .$inValue;
+            $this->filters[] = $filter;
+        }
+        else{
+            $this->setBind($value);
+
+            $filter = " " . $operatorCondition . " " . $field . " " . $logicalOperator . " ? ";
+            $this->filters[] = $filter;
+        }
+
         return $this;
     }
 
@@ -593,6 +541,21 @@ class db
         return $this;
     }
 
+
+    /**
+     * Adiciona um limite à consulta SQL.
+     * 
+     * @param int $limitIni Índice inicial do limite.
+     * @param int $limitFim Índice final do limite (opcional).
+     * @return $this Retorna a instância atual da classe.
+     */
+    public function addOffset(int $offset):DB
+    {
+        $this->propertys[] = " OFFSET {$offset}";
+
+        return $this;
+    }
+
      /**
      * Adiciona um agrupamento à consulta SQL.
      * 
@@ -621,13 +584,128 @@ class db
     {
         $typeJoin = strtoupper(trim($typeJoin));
         if (!in_array($typeJoin, ["LEFT", "RIGHT", "INNER", "OUTER", "FULL OUTER", "LEFT OUTER", "RIGHT OUTER"])) {
-            $this->error[] = "JOIN inválido";
-            return $this;
+            throw new Exception('Tabela: '.$this->table.' Filtro invalido');
         }
 
         $join = " " . $typeJoin . " JOIN " . $table . " ON " . $columnTable .$logicalOperator .$columnRelation . " ";
         $this->joins[] = $join;
         return $this;
+    }
+
+    /**
+     * Seta $this->columns.
+     * 
+     * @return void.
+    */
+    private function getColumnTable():void
+    {
+        if(!$this->columns){
+
+            if(!$this->class || !class_exists($this->class)){
+                $this->class = $this->getClassbyTableName($this->table);
+            }
+
+            if($this->class && class_exists($this->class) && method_exists($this->class,"table")){
+                $this->columns = $this->class::table()->getColumnsName();
+            }
+            else{
+                $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
+            
+                $sql->execute();
+
+                if ($sql->rowCount() > 0) {
+                    $this->columns = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+                }else{
+                    throw new Exception('Tabela: '.$this->table.' tabela não encontrada');
+                }
+            }
+        }
+    }
+
+    /**
+     * Retorna o último ID de uma tabela.
+     * 
+     * @return mixed Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
+     */
+    private function getlastIdBd():int
+    {
+        try{
+            $sql = $this->pdo->prepare('SELECT ' . $this->columns[0] . ' FROM ' . $this->table . ' ORDER BY ' . $this->columns[0] . ' DESC LIMIT 1');
+        
+            $sql->execute();
+
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+                return $rows[0];
+            }
+            
+            return 0;
+            
+        }catch(Exception $e){
+            throw new Exception("Tabela: status ".$e->getMessage());
+        }
+    }
+
+    /**
+     * Retorna o string da classe da tabela informada.
+     * 
+     * @return string Retorna o string da classe da tabela informada.
+    */
+    private static function getClassbyTableName(string $tableName):string
+    {
+        $className = 'app\\db\\tables\\';
+
+        $tableNameModified = strtolower(str_replace("_"," ",$tableName));
+
+        if(class_exists($className.$tableNameModified) && property_exists($className.str_replace(" ","",$tableNameModified), "table")){
+            return $className.$tableName;
+        }
+        if(class_exists($className.ucfirst($tableNameModified)) && property_exists($className.str_replace(" ","",ucfirst($tableNameModified)), "table")){
+            return $className.ucfirst($tableName);
+        }
+        if(class_exists($className.ucwords($tableNameModified)) && property_exists($className.str_replace(" ","",ucwords($tableNameModified)), "table")){
+            return $className.ucwords($tableName);
+        }
+
+        $tableFiles = scandir(dirname(__DIR__).DIRECTORY_SEPARATOR."tables");
+        
+        foreach ($tableFiles as $tableFile) {
+            $className .= str_replace(".php", "", $tableFile);
+        
+            if (class_exists($className) && property_exists($className, "table") && $className::table == $tableName) {
+                return $className;
+            }
+        }
+
+        return "";
+    }
+
+    /**
+     * execulta uma instrução sql.
+     * 
+     * @return $this->pdo instancia do pdo apos o prepare.
+    */
+    private function executeSql(string $sql_instruction)
+    {
+        $sql = $this->pdo->prepare($sql_instruction);
+
+        if ($this->debug)
+            $sql->debugDumpParams();
+
+        if($this->valuesBind){
+            foreach ($this->valuesBind as $key => $data) {
+                $sql->bindParam($key,$data[0],$data[1]);
+            }
+        }
+        
+        $sql->execute();
+
+        if ($this->debug)
+            $sql->debugDumpParams();
+
+        $this->clean();
+
+        return $sql;
     }
 
     /**
@@ -640,6 +718,27 @@ class db
         $this->filters = [];
         $this->valuesBind = [];
         $this->counterBind = 1;
+    }
+
+    /**
+     * retorna o parametro para fazer o bindValue no PDO.
+    */
+    private function setBind($value):void
+    {
+        if(is_int($value))
+            $param = \PDO::PARAM_INT;
+        elseif(is_bool($value))
+            $param = \PDO::PARAM_BOOL;
+        elseif(is_null($value))
+            $param = \PDO::PARAM_NULL;
+        else
+            $param = \PDO::PARAM_STR;
+
+        $this->valuesBind[$this->counterBind] = [
+            $value,
+            $param
+        ];
+        $this->counterBind++;
     }
 
 }

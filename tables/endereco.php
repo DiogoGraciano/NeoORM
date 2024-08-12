@@ -9,7 +9,7 @@ class endereco extends model {
     public const table = "endereco";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){

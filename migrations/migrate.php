@@ -5,9 +5,6 @@ namespace app\db\migrations;
 use app\db\transactionManeger;
 use Exception;
 
-/**
- * Classe responsavel por atualizar o banco de dados.
-*/
 class migrate{
 
    public static function execute(bool $recreate){
@@ -79,7 +76,7 @@ class migrate{
                $unresolvedDependencies[] = $dependentClass;
             } else {
                $dependentClass->execute($recreate);
-               $className = self::foundClassbyTableName($dependentClass->getTable());
+               $className = self::getClassbyTableName($dependentClass->getTable());
                if(method_exists($className, "seed"))
                   $className::seed();
             }
@@ -87,7 +84,7 @@ class migrate{
    
          if (empty($unresolvedDependencies) && !$table->exists()) {
             $table->execute($recreate);
-            $className = self::foundClassbyTableName($table->getTable());
+            $className = self::getClassbyTableName($table->getTable());
             if(method_exists($className, "seed"))
                $className::seed();
             $resolvedTables[] = $table;
@@ -99,7 +96,7 @@ class migrate{
       return $resolvedTables;
    }
 
-   private static function foundClassbyTableName(string $tableName):string
+   private static function getClassbyTableName(string $tableName):string
    {
 
       $className = 'app\\db\\tables\\';

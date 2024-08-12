@@ -5,7 +5,7 @@ use app\db\connection;
 use Exception;
 
 /**
- * Classe base para criação de tabelas no banco de dados.
+ * Classe base para criação do banco de dados.
  */
 class table
 {
@@ -362,6 +362,10 @@ class table
 
     public function getTable(){
         return $this->table;
+    }
+
+    public function getColumnsName(){
+        return array_keys($this->columns);
     }
     
     public function exists()

@@ -9,7 +9,7 @@ class funcionario extends model {
     public const table = "funcionario";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){

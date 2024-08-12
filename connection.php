@@ -2,7 +2,7 @@
 
 namespace app\db;
 
-use app\classes\logger;
+use app\helpers\logger;
 use Exception;
 use PDO;
 use PDOException;
@@ -65,6 +65,9 @@ class connection
                 self::$pdo = new PDO($dsn, DBUSER, DBPASSWORD);
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             } catch (PDOException $e) {
+                // Registra o erro no log antes de lançar a exceção
+                Logger::error($e->getMessage());
+
                 // Lança uma exceção personalizada
                 throw new Exception("Erro ao conectar ao banco de dados");
             }

@@ -4,13 +4,12 @@ namespace app\db\tables;
 use app\db\abstract\model;
 use app\db\migrations\table;
 use app\db\migrations\column;
-use app\db\db;
 
 class pais extends model {
     public const table = "pais";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){
@@ -21,7 +20,7 @@ class pais extends model {
     }
 
     public static function seed(){
-        $object = new db(self::table);
+        $object = new self;
         if(!$object->addLimit(1)->selectColumns("id")){
             $object->nome = "Brasil";
             $object->nome_internacial = "Brazil";

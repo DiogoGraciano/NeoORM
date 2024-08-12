@@ -9,7 +9,7 @@ class cidade extends model {
     public const table = "cidade";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){

@@ -9,7 +9,7 @@ class empresa extends model {
     public const table = "empresa";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){

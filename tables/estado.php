@@ -10,7 +10,7 @@ class estado extends model {
     public const table = "estado";
 
     public function __construct() {
-        parent::__construct(self::table);
+        parent::__construct(self::table,get_class($this));
     }
 
     public static function table(){
@@ -24,7 +24,7 @@ class estado extends model {
     }
 
     public static function seed(){
-        $object = new db(self::table);
+        $object = new self;
         if(!$object->addLimit(1)->selectColumns("id")){
             $object->nome = "Acre";
             $object->uf = "AC";
