@@ -4,7 +4,6 @@ namespace app\db;
 
 require "config.php";
 
-use app\helpers\logger;
 use Exception;
 use PDO;
 use PDOException;
