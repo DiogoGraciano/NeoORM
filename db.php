@@ -537,7 +537,10 @@ class db
      */
     public function addOrder(string $column,string $order="DESC"):DB
     {
-        $this->propertys[] = " ORDER by ".$column." ".$order;
+        $this->propertys[] = " ORDER by ? ?";
+
+        $this->setBind($column);
+        $this->setBind($order);
 
         return $this;
     }
@@ -552,9 +555,13 @@ class db
     public function addLimit(int $limitIni,int $limitFim=0):DB
     {
         if ($limitFim){
-            $this->propertys[] = " LIMIT {$limitIni},{$limitFim}";
-        }else
-            $this->propertys[] = " LIMIT {$limitIni}";
+            $this->propertys[] = " LIMIT ?,?";
+            $this->setBind($limitFim);
+        }else{
+            $this->propertys[] = " LIMIT ?";
+        }
+
+        $this->setBind($limitIni);
 
         return $this;
     }
@@ -569,7 +576,9 @@ class db
      */
     public function addOffset(int $offset):DB
     {
-        $this->propertys[] = " OFFSET {$offset}";
+        $this->propertys[] = " OFFSET ?";
+
+        $this->setBind($offset);
 
         return $this;
     }
@@ -582,7 +591,9 @@ class db
      */
     public function addGroup(string $columns):DB
     {
-        $this->propertys[] = " GROUP by ".$columns;
+        $this->propertys[] = " GROUP by ?";
+
+        $this->setBind($columns);
 
         return $this;
     }
@@ -781,4 +792,3 @@ class db
 
 }
 ?>
-
