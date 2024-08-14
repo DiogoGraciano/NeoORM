@@ -14,7 +14,7 @@ class servicoGrupoServico extends model {
 
     public static function table(){
         return (new table(self::table, comment: "Tabela de relacionamento entre grupos de serviços e serviços"))
-                ->addColumn((new column("id_grupo_servico", "INT"))->isPrimary()->isNotNull()->setComment("ID do grupo de serviço")->isForeingKey(grupoServico::table()))
-                ->addColumn((new column("id_servico", "INT"))->isPrimary()->isNotNull()->setComment("ID do serviço")->isForeingKey(servico::table()));
+                ->addColumn((new column("id_grupo_servico","INT"))->isPrimary()->isNotNull()->setComment("ID do grupo de serviço")->isForeingKey(grupoServico::table()))
+                ->addColumn((new column("id_servico","INT"))->isPrimary()->isNotNull()->setComment("ID do serviço")->isForeingKey(servico::table()));
     }
 }

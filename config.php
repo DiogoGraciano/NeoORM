@@ -1,8 +1,9 @@
 <?php
+    define("DRIVER","pgsql");
     define("DBHOST","localhost");
-    define("DBPORT","3306");
+    define("DBPORT","5432");
     define("DBNAME","agenda");
     define("DBCHARSET","utf8mb4");
-    define("DBUSER","root");
-    define("DBPASSWORD","");
+    define("DBUSER","postgres");
+    define("DBPASSWORD","154326");
 ?>

@@ -14,8 +14,8 @@ class grupoServico extends model {
 
     public static function table(){
         return (new table(self::table, comment: "Tabela de grupos de serviços"))
-                ->addColumn((new column("id", "INT"))->isPrimary()->isNotNull()->setComment("ID do grupo de serviços"))
-                ->addColumn((new column("id_empresa", "INT"))->isForeingKey(empresa::table())->isNotNull()->setComment("ID da empresa"))
+                ->addColumn((new column("id","INT"))->isPrimary()->isNotNull()->setComment("ID do grupo de serviços"))
+                ->addColumn((new column("id_empresa","INT"))->isForeingKey(empresa::table())->isNotNull()->setComment("ID da empresa"))
                 ->addColumn((new column("nome", "VARCHAR", 250))->isNotNull()->setComment("Nome do grupo de serviços"));
     }
 }

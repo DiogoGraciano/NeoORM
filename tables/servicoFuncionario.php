@@ -14,7 +14,7 @@ class servicoFuncionario extends model {
 
     public static function table(){
         return (new table(self::table, comment: "Tabela de relacionamento entre serviços e funcionários"))
-                ->addColumn((new column("id_funcionario", "INT"))->isPrimary()->isNotNull()->setComment("ID do funcionário")->isForeingKey(funcionario::table()))
-                ->addColumn((new column("id_servico", "INT"))->isPrimary()->isNotNull()->setComment("ID do serviço")->isForeingKey(servico::table()));
+                ->addColumn((new column("id_funcionario","INT"))->isPrimary()->isNotNull()->setComment("ID do funcionário")->isForeingKey(funcionario::table()))
+                ->addColumn((new column("id_servico","INT"))->isPrimary()->isNotNull()->setComment("ID do serviço")->isForeingKey(servico::table()));
     }
 }

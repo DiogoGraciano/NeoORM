@@ -17,6 +17,6 @@ class config extends model {
                 ->addColumn((new column("id","INT"))->isPrimary()->setComment("ID Config"))
                 ->addColumn((new column("id_empresa","INT"))->isNotNull()->isForeingKey(empresa::table(),"id")->setComment("ID da tabela empresa"))
                 ->addColumn((new column("identificador","VARCHAR",30))->isNotNull()->isUnique()->setComment("Identificador da configuração"))
-                ->addColumn((new column("configuracao","BLOB"))->isNotNull()->setComment("Configuração"));
+                ->addColumn((new column("configuracao","BYTEA"))->isNotNull()->setComment("Configuração"));
     }
 }

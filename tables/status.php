@@ -24,10 +24,13 @@ class status extends model {
         if(!$object->addLimit(1)->selectColumns("id")){
             $object->nome = "Agendado";
             $object->store();
+            $object = new self;
             $object->nome = "Finalizado";
             $object->store();
+            $object = new self;
             $object->nome = "Não atendido";
             $object->store();
+            $object = new self;
             $object->nome = "Cancelado";
             $object->store();
         }

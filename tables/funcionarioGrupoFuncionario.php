@@ -14,7 +14,7 @@ class funcionarioGrupoFuncionario extends model {
 
     public static function table(){
         return (new table(self::table, comment: "Tabela de relacionamento entre funcionarios e grupos de funcionarios"))
-                ->addColumn((new column("id_funcionario", "INT"))->isNotNull()->setComment("ID do funcionario")->isForeingKey(funcionario::table()))
-                ->addColumn((new column("id_grupo_funcionario", "INT"))->isNotNull()->setComment("ID do grupo de funcionarios")->isForeingKey(grupoFuncionario::table()));
+                ->addColumn((new column("id_funcionario","INT"))->isNotNull()->setComment("ID do funcionario")->isForeingKey(funcionario::table()))
+                ->addColumn((new column("id_grupo_funcionario","INT"))->isNotNull()->setComment("ID do grupo de funcionarios")->isForeingKey(grupoFuncionario::table()));
     }
 }

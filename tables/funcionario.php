@@ -14,8 +14,8 @@ class funcionario extends model {
 
     public static function table(){
         return (new table(self::table, comment: "Tabela de funcionarios"))
-                ->addColumn((new column("id", "INT"))->isPrimary()->isNotNull()->setComment("ID do funcionario"))
-                ->addColumn((new column("id_usuario", "INT"))->isNotNull()->isForeingKey(usuario::table())->setComment("ID da tabela usuario"))
+                ->addColumn((new column("id","INT"))->isPrimary()->isNotNull()->setComment("ID do funcionario"))
+                ->addColumn((new column("id_usuario","INT"))->isNotNull()->isForeingKey(usuario::table())->setComment("ID da tabela usuario"))
                 ->addColumn((new column("nome", "VARCHAR", 200))->isNotNull()->setComment("Nome do funcionario"))
                 ->addColumn((new column("cpf_cnpj", "VARCHAR", 14))->isNotNull()->setComment("CPF ou CNPJ do funcionario"))
                 ->addColumn((new column("email", "VARCHAR", 200))->isNotNull()->setComment("Email do funcionario"))

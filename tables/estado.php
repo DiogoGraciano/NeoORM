@@ -33,6 +33,7 @@ class estado extends model {
             $object->ddd = "68";
             $object->store();
 
+            $object = new self;
             $object->nome = "Alagoas";
             $object->uf = "AL";
             $object->pais = 1;
@@ -40,6 +41,7 @@ class estado extends model {
             $object->ddd = "82";
             $object->store();
 
+            $object = new self;
             $object->nome = "Amapá";
             $object->uf = "AP";
             $object->pais = 1;
@@ -47,6 +49,7 @@ class estado extends model {
             $object->ddd = "96";
             $object->store();
 
+            $object = new self;
             $object->nome = "Amazonas";
             $object->uf = "AM";
             $object->pais = 1;
@@ -54,6 +57,7 @@ class estado extends model {
             $object->ddd = "92,97";
             $object->store();
 
+            $object = new self;
             $object->nome = "Bahia";
             $object->uf = "BA";
             $object->pais = 1;
@@ -61,6 +65,7 @@ class estado extends model {
             $object->ddd = "71,73,74,75,77";
             $object->store();
 
+            $object = new self;
             $object->nome = "Ceará";
             $object->uf = "CE";
             $object->pais = 1;
@@ -68,6 +73,7 @@ class estado extends model {
             $object->ddd = "85,88";
             $object->store();
 
+            $object = new self;
             $object->nome = "Distrito Federal";
             $object->uf = "DF";
             $object->pais = 1;
@@ -75,6 +81,7 @@ class estado extends model {
             $object->ddd = "61";
             $object->store();
 
+            $object = new self;
             $object->nome = "Espírito Santo";
             $object->uf = "ES";
             $object->pais = 1;
@@ -82,6 +89,7 @@ class estado extends model {
             $object->ddd = "27,28";
             $object->store();
 
+            $object = new self;
             $object->nome = "Goiás";
             $object->uf = "GO";
             $object->pais = 1;
@@ -89,6 +97,7 @@ class estado extends model {
             $object->ddd = "62,64";
             $object->store();
 
+            $object = new self;
             $object->nome = "Maranhão";
             $object->uf = "MA";
             $object->pais = 1;
@@ -96,6 +105,7 @@ class estado extends model {
             $object->ddd = "98,99";
             $object->store();
 
+            $object = new self;
             $object->nome = "Mato Grosso";
             $object->uf = "MT";
             $object->pais = 1;
@@ -103,6 +113,7 @@ class estado extends model {
             $object->ddd = "65,66";
             $object->store();
 
+            $object = new self;
             $object->nome = "Mato Grosso do Sul";
             $object->uf = "MS";
             $object->pais = 1;
@@ -110,6 +121,7 @@ class estado extends model {
             $object->ddd = "67";
             $object->store();
 
+            $object = new self;
             $object->nome = "Minas Gerais";
             $object->uf = "MG";
             $object->pais = 1;
@@ -117,6 +129,7 @@ class estado extends model {
             $object->ddd = "31,32,33,34,35,37,38";
             $object->store();
 
+            $object = new self;
             $object->nome = "Pará";
             $object->uf = "PA";
             $object->pais = 1;
@@ -124,6 +137,7 @@ class estado extends model {
             $object->ddd = "91,93,94";
             $object->store();
 
+            $object = new self;
             $object->nome = "Paraíba";
             $object->uf = "PB";
             $object->pais = 1;
@@ -131,6 +145,7 @@ class estado extends model {
             $object->ddd = "83";
             $object->store();
 
+            $object = new self;
             $object->nome = "Paraná";
             $object->uf = "PR";
             $object->pais = 1;
@@ -138,6 +153,7 @@ class estado extends model {
             $object->ddd = "41,42,43,44,45,46";
             $object->store();
 
+            $object = new self;
             $object->nome = "Pernambuco";
             $object->uf = "PE";
             $object->pais = 1;
@@ -145,6 +161,7 @@ class estado extends model {
             $object->ddd = "81,87";
             $object->store();
 
+            $object = new self;
             $object->nome = "Piauí";
             $object->uf = "PI";
             $object->pais = 1;
@@ -152,6 +169,7 @@ class estado extends model {
             $object->ddd = "86,89";
             $object->store();
 
+            $object = new self;
             $object->nome = "Rio de Janeiro";
             $object->uf = "RJ";
             $object->pais = 1;
@@ -159,6 +177,7 @@ class estado extends model {
             $object->ddd = "21,22,24";
             $object->store();
 
+            $object = new self;
             $object->nome = "Rio Grande do Norte";
             $object->uf = "RN";
             $object->pais = 1;
@@ -166,6 +185,7 @@ class estado extends model {
             $object->ddd = "84";
             $object->store();
 
+            $object = new self;
             $object->nome = "Rio Grande do Sul";
             $object->uf = "RS";
             $object->pais = 1;
@@ -173,6 +193,7 @@ class estado extends model {
             $object->ddd = "51,53,54,55";
             $object->store();
 
+            $object = new self;
             $object->nome = "Rondônia";
             $object->uf = "RO";
             $object->pais = 1;
@@ -180,6 +201,7 @@ class estado extends model {
             $object->ddd = "69";
             $object->store();
 
+            $object = new self;
             $object->nome = "Roraima";
             $object->uf = "RR";
             $object->pais = 1;
@@ -187,6 +209,7 @@ class estado extends model {
             $object->ddd = "95";
             $object->store();
 
+            $object = new self;
             $object->nome = "Santa Catarina";
             $object->uf = "SC";
             $object->pais = 1;
@@ -194,6 +217,7 @@ class estado extends model {
             $object->ddd = "47,48,49";
             $object->store();
 
+            $object = new self;
             $object->nome = "São Paulo";
             $object->uf = "SP";
             $object->pais = 1;
@@ -201,6 +225,7 @@ class estado extends model {
             $object->ddd = "11,12,13,14,15,16,17,18,19";
             $object->store();
 
+            $object = new self;
             $object->nome = "Sergipe";
             $object->uf = "SE";
             $object->pais = 1;
@@ -208,6 +233,7 @@ class estado extends model {
             $object->ddd = "79";
             $object->store();
 
+            $object = new self;
             $object->nome = "Tocantins";
             $object->uf = "TO";
             $object->pais = 1;

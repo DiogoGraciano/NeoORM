@@ -14,8 +14,8 @@ class grupoFuncionario extends model {
 
     public static function table(){
         return (new table(self::table, comment: "Tabela de funcionarios"))
-                ->addColumn((new column("id", "INT"))->isPrimary()->isNotNull()->setComment("ID do funcionario"))
-                ->addColumn((new column("id_empresa", "INT"))->isNotNull()->isForeingKey(empresa::table())->setComment("ID da tabela empresa"))
+                ->addColumn((new column("id","INT"))->isPrimary()->isNotNull()->setComment("ID do funcionario"))
+                ->addColumn((new column("id_empresa","INT"))->isNotNull()->isForeingKey(empresa::table())->setComment("ID da tabela empresa"))
                 ->addColumn((new column("nome", "VARCHAR", 200))->isNotNull()->setComment("Nome do grupo de funcionarios"));
     }
 }

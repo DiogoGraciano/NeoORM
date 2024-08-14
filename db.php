@@ -13,70 +13,70 @@ class db
      *
      * @var string
      */
-    private $table;
+    private string $table;
 
     /**
      * Classe da tabela.
      *
      * @var string
      */
-    private $class;
+    private string $class;
 
     /**
      * Objeto da tabela.
      *
      * @var array
     */
-    private $object = [];
+    private array $object = [];
 
     /**
      * array de colunas da tabela.
      *
      * @var array
     */
-    private $columns;
+    private array $columns;
 
     /**
      * array com os joins informados.
      *
      * @var array
     */
-    private $joins =[];
+    private array $joins =[];
 
     /**
      * debug está ativo?.
      *
      * @var array
     */
-    private $debug = false;
+    private bool $debug = false;
 
     /**
      * array com os propriedades informadas.
      *
      * @var array
     */
-    private $propertys =[];
+    private array $propertys =[];
 
     /**
      * array com os filtros informadas.
      *
      * @var array
     */
-    private $filters =[];
+    private array $filters =[];
 
     /**
      * valores do bindparam.
      *
-     * @var mixed
+     * @var array
     */
-    private $valuesBind = [];
+    private array $valuesBind = [];
 
     /**
      * contador de parametros do bindparam.
      *
-     * @var mixed
+     * @var int
     */
-    private $counterBind = 1;
+    private int $counterBind = 1;
 
     /**
      * Constante do operado AND.
@@ -97,7 +97,15 @@ class db
      *
      * @var PDO
     */
-    private $pdo;
+    private PDO $pdo;
+
+
+    /**
+     * todos retornos são como array?.
+     *
+     * @var bool
+    */
+    private bool $asArray = false;
 
     /**
      * Construtor da classe.
@@ -106,9 +114,7 @@ class db
      */
     function __construct(string $table,string|null $class = null)
     {
-        // Inicia a Conexão
-        if (!$this->pdo)
-            $this->pdo = connection::getConnection();
+        $this->pdo = connection::getConnection();
 
         // Seta Tabela
         $this->table = $table;
@@ -155,6 +161,18 @@ class db
     public function setDebug():DB
     {
         $this->debug = true;
+
+        return $this;
+    }
+
+    /**
+     * Set Debug.
+     * 
+     * @return void Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
+     */
+    public function asArray():DB
+    {
+        $this->asArray = true;
 
         return $this;
     }
@@ -213,7 +231,7 @@ class db
             $rows = [];
 
             if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,get_class($this),[$this->table]);
+                $this->asArray == false ? $rows = $sql->fetchAll(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,get_class($this),[$this->table]) : $rows = $sql->fetchAll();
             }    
 
             return $rows;
@@ -599,25 +617,45 @@ class db
     */
     private function getColumnTable():void
     {
-        if(!$this->columns){
+        if(!$this->class || !class_exists($this->class)){
+            $this->class = $this->getClassbyTableName($this->table);
+        }
 
-            if(!$this->class || !class_exists($this->class)){
-                $this->class = $this->getClassbyTableName($this->table);
+        if($this->class && class_exists($this->class) && method_exists($this->class,"table")){
+            $this->columns = $this->class::table()->getColumnsName();
+        }
+        else{
+            if(DRIVER == "mysql"){
+                $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM 
+                                                INFORMATION_SCHEMA.COLUMNS
+                                            WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" 
+                                            ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
+            }elseif(DRIVER == "pgsql"){
+                $sql = $this->pdo->prepare('SELECT c.COLUMN_NAME FROM 
+                                                INFORMATION_SCHEMA.COLUMNS c
+                                            LEFT JOIN 
+                                                INFORMATION_SCHEMA.KEY_COLUMN_USAGE k 
+                                            ON 
+                                                c.TABLE_NAME = k.TABLE_NAME 
+                                                AND c.COLUMN_NAME = k.COLUMN_NAME
+                                                AND c.TABLE_SCHEMA = k.TABLE_SCHEMA
+                                            WHERE 
+                                                c.TABLE_CATALOG = "'.DBNAME.'" 
+                                                AND c.TABLE_NAME = "' . $this->table . '"
+                                            ORDER BY 
+                                                CASE 
+                                                    WHEN k.COLUMN_NAME IS NOT NULL THEN 0 
+                                                    ELSE 1 
+                                                END,
+                                                c.ORDINAL_POSITION;');
             }
 
-            if($this->class && class_exists($this->class) && method_exists($this->class,"table")){
-                $this->columns = $this->class::table()->getColumnsName();
-            }
-            else{
-                $sql = $this->pdo->prepare('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = "'.DBNAME.'" AND TABLE_NAME = "' . $this->table . '" ORDER BY CASE WHEN COLUMN_KEY = "PRI" THEN 1 ELSE 2 END,COLUMN_NAME;');
-            
-                $sql->execute();
+            $sql->execute();
 
-                if ($sql->rowCount() > 0) {
-                    $this->columns = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
-                }else{
-                    throw new Exception('Tabela: '.$this->table.' tabela não encontrada');
-                }
+            if ($sql->rowCount() > 0) {
+                $this->columns = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
+            }else{
+                throw new Exception('Tabela: '.$this->table.' tabela não encontrada');
             }
         }
     }
