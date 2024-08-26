@@ -164,7 +164,7 @@ class db
     /**
      * Set Debug.
      * 
-     * @return void Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
+     * @return DB Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
      */
     public function setDebug():DB
     {
@@ -176,7 +176,7 @@ class db
     /**
      * Set Debug.
      * 
-     * @return void Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
+     * @return DB Retorna o último ID inserido na tabela ou null se nenhum ID foi inserido.
      */
     public function asArray():DB
     {
@@ -603,11 +603,9 @@ class db
      * @param string $columns Colunas para agrupamento.
      * @return $this Retorna a instância atual da classe.
      */
-    public function addGroup(string $columns):DB
+    public function addGroup(...$columns):DB
     {
-        $this->propertys[] = " GROUP by ?";
-
-        $this->setBind($columns,true);
+        $this->propertys[] = " GROUP by ".implode(",",$columns);
 
         return $this;
     }
@@ -755,8 +753,8 @@ class db
         if ($this->debug)
             $sql->debugDumpParams();
 
-        $lastcount = 1;
-        if($this->valuesBind){
+        $lastcount = 0;
+        if($this->valuesBind || $this->valuesBindProperty){
             foreach ($this->valuesBind as $key => $data) {
                 $lastcount = $key;
                 $sql->bindParam($key,$data[0],$data[1]);

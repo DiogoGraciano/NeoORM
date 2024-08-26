@@ -24,6 +24,7 @@ class funcionario extends model {
                 ->addColumn((new column("hora_fim", "TIME"))->isNotNull()->setComment("Horario final de atendimento"))
                 ->addColumn((new column("hora_almoco_ini", "TIME"))->isNotNull()->setComment("Horario inicial do almoco"))
                 ->addColumn((new column("hora_almoco_fim", "TIME"))->isNotNull()->setComment("Horario final do almoco"))
-                ->addColumn((new column("dias", "VARCHAR", 27))->isNotNull()->setComment("Dias de trabalho: dom,seg,ter,qua,qui,sex,sab"));
+                ->addColumn((new column("dias", "VARCHAR", 27))->isNotNull()->setComment("Dias de trabalho: dom,seg,ter,qua,qui,sex,sab"))
+                ->addColumn((new column("espacamento_agenda", "INT"))->isNotNull()->setComment("Tamanho do Slot para selecionar na agenda em minutos"));
     }
 }
