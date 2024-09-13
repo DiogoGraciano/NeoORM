@@ -2,7 +2,7 @@
 
 namespace app\db;
 
-require "config.php";
+require_once "config.php";
 
 use Exception;
 use PDO;

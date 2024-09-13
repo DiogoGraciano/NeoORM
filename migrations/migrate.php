@@ -62,7 +62,7 @@ class migrate{
       }
       catch(\Exception $e){
          transactionManeger::rollBack();
-         throw new Exception($e->getMessage());
+         echo $e->getMessage();
       }
    }
 

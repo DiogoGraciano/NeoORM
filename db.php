@@ -239,7 +239,7 @@ class db
             $rows = [];
 
             if ($sql->rowCount() > 0) {
-                $this->asArray == false ? $rows = $sql->fetchAll(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,get_class($this),[$this->table]) : $rows = $sql->fetchAll();
+                $this->asArray == false ? $rows = $sql->fetchAll(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,get_class($this),[$this->table]) : $rows = $sql->fetchAll(\PDO::FETCH_ASSOC);
             }    
 
             return $rows;
@@ -270,6 +270,9 @@ class db
 
             $sql = $this->pdo->prepare($sql);
 
+            if ($this->debug)
+                $sql->debugDumpParams();
+
             $lastcount = 1;
             if($this->valuesBind){
                 foreach ($this->valuesBind as $key => $data) {
@@ -283,6 +286,9 @@ class db
             }
                 
             $sql->execute();
+
+            if ($this->debug)
+                $sql->debugDumpParams();
 
             $count = $sql->fetchAll(\PDO::FETCH_COLUMN, 0);
 
@@ -551,10 +557,7 @@ class db
      */
     public function addOrder(string $column,string $order="DESC"):DB
     {
-        $this->propertys[] = " ORDER by ? ?";
-
-        $this->setBind($column,true);
-        $this->setBind($order,true);
+        $this->propertys[] = " ORDER by ".$column." ".$order;
 
         return $this;
     }

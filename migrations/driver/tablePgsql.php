@@ -190,6 +190,13 @@ class tablePgsql implements table
         foreach ($table as $column){
             if(!in_array($column["column_name"],array_keys($this->columns))){
                 $coluna = $column["column_name"];
+                if($column["constraint_type"] == "FOREIGN KEY"){
+                    $ForeingkeyName = $column["constraint_name"];
+                    if($ForeingkeyName){
+                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$coluna};".$sql;
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};".$sql;
+                    }
+                }
                 $sql .= "ALTER TABLE {$this->table} DROP COLUMN {$coluna};";
                 break;
             }  
@@ -208,33 +215,36 @@ class tablePgsql implements table
             $columnInformation = array_filter($table,fn($key) => in_array($column->name,$table[$key]),ARRAY_FILTER_USE_KEY);
             $primaryKeyDb = array_column(array_filter($table,fn($key) => in_array("PRIMARY KEY",$table[$key]),ARRAY_FILTER_USE_KEY),"column_name");
    
-            if(!$inDb || $columnInformation){
-
+            if(isset($columnInformation[array_key_first($columnInformation)]))
                 $columnInformation = $columnInformation[array_key_first($columnInformation)];
+            else 
+                $columnInformation = [];
+
+            if(!$inDb || $columnInformation){
                 
                 !$inDb?$operation = "ADD":$operation = "MODIFY";
 
-                if($columnInformation["data_type"] == "character varying"){
+                if($inDb && $columnInformation["data_type"] == "character varying"){
                     $columnInformation["data_type"] = "varchar";
                 }
 
-                if($columnInformation["data_type"] == "integer" && $column->type == "INT"){
+                if($inDb && $columnInformation["data_type"] == "integer" && $column->type == "INT"){
                     $columnInformation["data_type"] = "int";
                 }
 
-                if($columnInformation["data_type"] == "numeric" && explode("(",$column->type)[0] == "DECIMAL"){
+                if($inDb && $columnInformation["data_type"] == "numeric" && explode("(",$column->type)[0] == "DECIMAL"){
                     $columnInformation["data_type"] = "decimal";
                 }
 
-                if($columnInformation["data_type"] == "time without time zone" && $column->type == "TIME"){
+                if($inDb && $columnInformation["data_type"] == "time without time zone" && $column->type == "TIME"){
                     $columnInformation["data_type"] = "time";
                 }
 
-                if($columnInformation["data_type"] == "timestamp without time zone"  && $column->type == "TIMESTAMP"){
+                if($inDb && $columnInformation["data_type"] == "timestamp without time zone"  && $column->type == "TIMESTAMP"){
                     $columnInformation["data_type"] = "timestamp";
                 }
 
-                if($columnInformation["data_type"] == "timestamp with time zone"  && $column->type == "TIMESTAMP"){
+                if($inDb && $columnInformation["data_type"] == "timestamp with time zone"  && $column->type == "TIMESTAMP"){
                     $columnInformation["data_type"] = "timestamp";
                 }
 
@@ -251,27 +261,27 @@ class tablePgsql implements table
                 if($inDb && ($column->foreingKey && $columnInformation["constraint_type"] == "FOREIGN KEY") && $changed){
                     $ForeingkeyName = $columnInformation["constraint_name"];
                     if($ForeingkeyName){
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};".$sql;
                         $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
                         $removed = true;
                     }else 
                         throw new Exception($this->table.": Não foi possivel remover FOREIGN KEY para atualizar a coluna ".$column->name);
                 }
-                if(!$inDb || ($column->unique && $columnInformation["constraint_type"] != "UNIQUE")){
+                if(!$inDb && $column->unique || ($column->unique && $columnInformation["constraint_type"] != "UNIQUE")){
                     $sql .= "ALTER TABLE {$this->table} ADD UNIQUE ({$column->name});";
                 }
-                if(!$column->unique && $columnInformation["constraint_type"] == "UNIQUE"){
+                if($inDb && !$column->unique && $columnInformation["constraint_type"] == "UNIQUE"){
                     $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
-                if(!$inDb || ($column->foreingKey && $columnInformation["constraint_type"] != "FOREIGN KEY") || ($column->foreingKey && $removed)){
+                if(!$inDb && $column->foreingKey || ($column->foreingKey && $columnInformation["constraint_type"] != "FOREIGN KEY") || ($column->foreingKey && $removed)){
                     $ForeingkeyName = $columnInformation["constraint_name"];
                     if($ForeingkeyName)
                         $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
                 }
-                if(!$column->foreingKey && $columnInformation["constraint_type"] == "FOREIGN KEY"){
+                if($inDb && !$column->foreingKey && $columnInformation["constraint_type"] == "FOREIGN KEY"){
                     $ForeingkeyName = $columnInformation["constraint_name"];
                     if($ForeingkeyName)
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY ({$ForeingkeyName[0]});".$sql;
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};".$sql;
                 }
             }
         }

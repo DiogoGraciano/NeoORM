@@ -217,6 +217,13 @@ class tableMysql implements table
         foreach ($table as $column){
             if(!in_array($column["COLUMN_NAME"],array_keys($this->columns))){
                 $coluna = $column["COLUMN_NAME"];
+                if($column["COLUMN_KEY"] == "MUL"){
+                    $ForeingkeyName = $this->getForeingKeyName($coluna);
+                    if(isset($ForeingkeyName[0])){
+                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$coluna};".$sql;
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
+                    }
+                }
                 $sql .= "ALTER TABLE {$this->table} DROP COLUMN {$coluna};";
                 break;
             }  
@@ -235,9 +242,12 @@ class tableMysql implements table
             $columnInformation = array_filter($table,fn($key) => in_array($column->name,$table[$key]),ARRAY_FILTER_USE_KEY);
             $primaryKeyDb = array_column(array_filter($table,fn($key) => in_array("PRI",$table[$key]),ARRAY_FILTER_USE_KEY),"COLUMN_NAME");
 
-            if(!$inDb || $columnInformation){
-
+            if(isset($columnInformation[array_key_first($columnInformation)]))
                 $columnInformation = $columnInformation[array_key_first($columnInformation)];
+            else 
+                $columnInformation = [];
+
+            if(!$inDb || $columnInformation){
                 
                 !$inDb?$operation = "ADD":$operation = "MODIFY";
                
@@ -254,27 +264,29 @@ class tableMysql implements table
                 if($inDb && ($column->foreingKey && $columnInformation["COLUMN_KEY"] == "MUL") && $changed){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(isset($ForeingkeyName[0])){
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
                         $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
                         $removed = true;
                     }else 
                         throw new Exception($this->table.": Não foi possivel remover FOREIGN KEY para atualizar a coluna ".$column->name);
                 }
-                if(!$inDb || ($column->unique && $columnInformation["COLUMN_KEY"] != "UNI")){
+                if(!$inDb && $column->unique || ($column->unique && $columnInformation["COLUMN_KEY"] != "UNI")){
                     $sql .= "ALTER TABLE {$this->table} ADD UNIQUE ({$column->name});";
                 }
-                if(!$column->unique && $columnInformation["COLUMN_KEY"] == "UNI"){
+                if($inDb && !$column->unique && $columnInformation["COLUMN_KEY"] == "UNI"){
                     $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
-                if(!$inDb || ($column->foreingKey && $columnInformation["COLUMN_KEY"] != "MUL") || ($column->foreingKey && $removed)){
+                if(!$inDb && $column->foreingKey || ($column->foreingKey && $columnInformation["COLUMN_KEY"] != "MUL") || ($column->foreingKey && $removed)){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(!isset($ForeingkeyName[0]))
                         $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
                 }
-                if(!$column->foreingKey && $columnInformation["COLUMN_KEY"] == "MUL"){
+                if($inDb && !$column->foreingKey && $columnInformation["COLUMN_KEY"] == "MUL"){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
-                    if(isset($ForeingkeyName[0]))
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY ({$ForeingkeyName[0]});".$sql;
+                    if(isset($ForeingkeyName[0])){
+                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
+                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
+                    }
                 }
             }
         }
