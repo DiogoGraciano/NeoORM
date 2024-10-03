@@ -13,15 +13,15 @@ class migrate{
 
          transactionManeger::beginTransaction();
          
-         $tableFiles = scandir(dirname(dirname(__DIR__)).DIRECTORY_SEPARATOR."models");
+         $tableFiles = scandir(PATH_MODEL);
          
          $tablesWithForeignKeys = [];
          $allTableInstances = [];
          
          foreach ($tableFiles as $tableFile) {
-            $className = 'app\\models\\' . str_replace(".php", "", $tableFile);
+            $className = MODEL_NAMESPACE."\\".str_replace(".php", "", $tableFile);
 
-            if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"diogodg\neoorm\abstract\model")) {
+            if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"diogodg\\neoorm\abstract\model")) {
 
                $tableInstance = $className::table();
                $allTableInstances[] = $className;
@@ -102,7 +102,7 @@ class migrate{
    private static function getClassbyTableName(string $tableName):string
    {
 
-      $className = 'app\\db\\models';
+      $className = MODEL_NAMESPACE;
 
       $tableNameModified = strtolower(str_replace("_"," ",$tableName));
 
@@ -116,7 +116,7 @@ class migrate{
          return $className.ucwords($tableName);
       }
 
-      $tableFiles = scandir(dirname(dirname(__DIR__)).DIRECTORY_SEPARATOR."models");
+      $tableFiles = scandir(PATH_MODEL);
       
       foreach ($tableFiles as $tableFile) {
          $className .= str_replace(".php", "", $tableFile);
