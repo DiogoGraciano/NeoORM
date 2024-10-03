@@ -136,6 +136,7 @@ Dentro da pasta app/models deverá ser criada uma classe que irá representar su
 
 ```php
 <?php
+namespace app\models;
 
 use diogodg\neoorm\abstract\model;
 use diogodg\neoorm\migrations\table;
