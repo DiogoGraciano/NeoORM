@@ -18,6 +18,8 @@ definir em qualquer arquivo essas variaves com suas configurações de seu banco
     define("DBCHARSET","utf8mb4");
     define("DBUSER","root");
     define("DBPASSWORD","");
+    define("PATH_MODEL",__DIR__."/app/models");
+    define("MODEL_NAMESPACE","app\models");
 ?>
 ```
 
