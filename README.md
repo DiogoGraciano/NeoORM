@@ -7,6 +7,20 @@ NeoORM é uma biblioteca PHP para gerenciamento de bancos de dados que permite c
 composer require diogodg/neoorm
 ```
 
+definir em qualquer arquivo essas variaves com suas configurações de seu banco de dados
+
+```php
+<?php
+    define("DRIVER","mysql");
+    define("DBHOST","localhost");
+    define("DBPORT","3306");
+    define("DBNAME","bd");
+    define("DBCHARSET","utf8mb4");
+    define("DBUSER","root");
+    define("DBPASSWORD","");
+?>
+```
+
 ## Exemplos
 
 ### Selecionar Registros
