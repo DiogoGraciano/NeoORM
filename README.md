@@ -167,7 +167,7 @@ class estado extends model {
 
     //metodo responsavel por inserir dados iniciais na tabela 
     public static function seed(){
-        $object = new db(self::table);
+        $object = new self;
         if(!$object->addLimit(1)->selectColumns("id")){
             $object->nome = "Acre";
             $object->uf = "AC";
