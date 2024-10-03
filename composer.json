@@ -5,7 +5,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "neo\\orm\\": "src/"
+            "diogodg\\neoorm\\": "src/"
         }
     },
     "authors": [
