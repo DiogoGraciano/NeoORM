@@ -117,12 +117,12 @@ Dentro da pasta app/models deverá ser criada uma classe que irá representar su
 
 ```php
 <?php
-namespace diogodg/neoorm\tables;
+namespace diogodg\neoorm\tables;
 
-use diogodg/neoorm\abstract\model;
-use diogodg/neoorm\migrations\table;
-use diogodg/neoorm\migrations\column;
-use diogodg/neoorm\db;
+use diogodg\neoorm\abstract\model;
+use diogodg\neoorm\migrations\table;
+use diogodg\neoorm\migrations\column;
+use diogodg\neoorm\db;
 
 class estado extends model {
     //parametro obrigatorio que irá definir o nome da tabela no banco
@@ -187,7 +187,7 @@ basta chamar a seguinte classe como no exemplo abaixo
 
 <?php
 
-use diogodg/neoorm\migrations\migrate;
+use diogodg\neoorm\migrations\migrate;
 
 //caso o parametro recreate seja verdadeiro irá ser removido todas as tabelas e depois recriadas novamente
 migrate::execute($recrete = false);

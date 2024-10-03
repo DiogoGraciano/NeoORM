@@ -1,9 +1,9 @@
 <?php
-namespace diogodg/neoorm\migrations\driver;
+namespace diogodg\neoorm\migrations\driver;
 
-use diogodg/neoorm\connection;
-use diogodg/neoorm\migrations\interface\table;
-use diogodg/neoorm\migrations\column;
+use diogodg\neoorm\connection;
+use diogodg\neoorm\migrations\interface\table;
+use diogodg\neoorm\migrations\column;
 use Exception;
 
 /**

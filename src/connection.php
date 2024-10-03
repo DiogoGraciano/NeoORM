@@ -1,6 +1,6 @@
 <?php
 
-namespace diogodg/neoorm;
+namespace diogodg\neoorm;
 
 require_once "config.php";
 

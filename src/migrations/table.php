@@ -1,9 +1,9 @@
 <?php
-namespace diogodg/neoorm\migrations;
+namespace diogodg\neoorm\migrations;
 
-use diogodg/neoorm\migrations\driver\tableMysql;
-use diogodg/neoorm\migrations\driver\tablePgsql;
-use diogodg/neoorm\migrations\interface\table as tableInterface;
+use diogodg\neoorm\migrations\driver\tableMysql;
+use diogodg\neoorm\migrations\driver\tablePgsql;
+use diogodg\neoorm\migrations\interface\table as tableInterface;
 
 /**
  * Classe base para criação do banco de dados.

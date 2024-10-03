@@ -1,8 +1,8 @@
 <?php
 
-namespace diogodg/neoorm\migrations;
+namespace diogodg\neoorm\migrations;
 
-use diogodg/neoorm\transactionManeger;
+use diogodg\neoorm\transactionManeger;
 
 class migrate{
 
@@ -21,7 +21,7 @@ class migrate{
          foreach ($tableFiles as $tableFile) {
             $className = 'app\\models\\' . str_replace(".php", "", $tableFile);
 
-            if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"diogodg/neoorm\abstract\model")) {
+            if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"diogodg\neoorm\abstract\model")) {
 
                $tableInstance = $className::table();
                $allTableInstances[] = $className;

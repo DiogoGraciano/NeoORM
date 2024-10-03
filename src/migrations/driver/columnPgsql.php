@@ -1,8 +1,8 @@
 <?php
-namespace diogodg/neoorm\migrations\driver;
+namespace diogodg\neoorm\migrations\driver;
 
-use diogodg/neoorm\migrations\table;
-use diogodg/neoorm\migrations\interface\column;
+use diogodg\neoorm\migrations\table;
+use diogodg\neoorm\migrations\interface\column;
 use stdClass;
 use Exception;
 

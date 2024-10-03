@@ -1,8 +1,8 @@
 <?php
 
-namespace diogodg/neoorm\abstract;
+namespace diogodg\neoorm\abstract;
 
-use diogodg/neoorm\db;
+use diogodg\neoorm\db;
 
 abstract class model extends db{
 

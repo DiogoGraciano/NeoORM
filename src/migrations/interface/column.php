@@ -1,7 +1,7 @@
 <?php
-namespace diogodg/neoorm\migrations\interface;
+namespace diogodg\neoorm\migrations\interface;
 
-use diogodg/neoorm\migrations\table;
+use diogodg\neoorm\migrations\table;
 
 /**
  * Interface de Classe base para criação do banco de dados.

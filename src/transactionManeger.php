@@ -1,7 +1,7 @@
 <?php
-namespace diogodg/neoorm;
+namespace diogodg\neoorm;
 
-use diogodg/neoorm\connection;
+use diogodg\neoorm\connection;
 use Exception;
 
 class transactionManeger
