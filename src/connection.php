@@ -1,6 +1,6 @@
 <?php
 
-namespace db\neoorm;
+namespace neo\orm;
 
 require_once "config.php";
 

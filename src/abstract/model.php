@@ -1,8 +1,8 @@
 <?php
 
-namespace db\neoorm\abstract;
+namespace neo\orm\abstract;
 
-use db\neoorm\db;
+use neo\orm\db;
 
 abstract class model extends db{
 

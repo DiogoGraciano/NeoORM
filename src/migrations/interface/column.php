@@ -1,7 +1,7 @@
 <?php
-namespace db\neoorm\migrations\interface;
+namespace neo\orm\migrations\interface;
 
-use db\neoorm\migrations\table;
+use neo\orm\migrations\table;
 
 /**
  * Interface de Classe base para criação do banco de dados.

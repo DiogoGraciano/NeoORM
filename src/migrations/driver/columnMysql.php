@@ -1,8 +1,8 @@
 <?php
-namespace db\neoorm\migrations\driver;
+namespace neo\orm\migrations\driver;
 
-use db\neoorm\migrations\table;
-use db\neoorm\migrations\interface\column;
+use neo\orm\migrations\table;
+use neo\orm\migrations\interface\column;
 use stdClass;
 use Exception;
 

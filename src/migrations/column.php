@@ -1,9 +1,9 @@
 <?php
-namespace db\neoorm\migrations;
+namespace neo\orm\migrations;
 
-use db\neoorm\migrations\driver\columnMysql;
-use db\neoorm\migrations\driver\columnPgsql;
-use db\neoorm\migrations\interface\column as columnInterface;
+use neo\orm\migrations\driver\columnMysql;
+use neo\orm\migrations\driver\columnPgsql;
+use neo\orm\migrations\interface\column as columnInterface;
 
 /**
  * Classe base para criação do banco de dados.

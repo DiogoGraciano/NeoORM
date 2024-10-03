@@ -1,11 +1,11 @@
 {
-    "name": "db\neoorm",
+    "name": "neo/orm",
     "description": "NeoORM é uma classe para mapeamento de um banco de dados Mysql/Pgsql",
     "type": "library",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Db\\Neoorm\\": "src/"
+            "neo\\orm\\": "src/"
         }
     },
     "authors": [

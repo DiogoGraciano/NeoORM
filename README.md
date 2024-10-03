@@ -117,12 +117,12 @@ Dentro da pasta app/models deverá ser criada uma classe que irá representar su
 
 ```php
 <?php
-namespace db\neoorm\tables;
+namespace neo\orm\tables;
 
-use db\neoorm\abstract\model;
-use db\neoorm\migrations\table;
-use db\neoorm\migrations\column;
-use db\neoorm\db;
+use neo\orm\abstract\model;
+use neo\orm\migrations\table;
+use neo\orm\migrations\column;
+use neo\orm\db;
 
 class estado extends model {
     //parametro obrigatorio que irá definir o nome da tabela no banco
@@ -187,7 +187,7 @@ basta chamar a seguinte classe como no exemplo abaixo
 
 <?php
 
-use db\neoorm\migrations\migrate;
+use neo\orm\migrations\migrate;
 
 //caso o parametro recreate seja verdadeiro irá ser removido todas as tabelas e depois recriadas novamente
 migrate::execute($recrete = false);

@@ -1,7 +1,7 @@
 <?php
-namespace db\neoorm;
+namespace neo\orm;
 
-use db\neoorm\connection;
+use neo\orm\connection;
 use Exception;
 
 class transactionManeger

@@ -1,5 +1,5 @@
 <?php
-namespace db\neoorm;
+namespace neo\orm;
 use Exception;
 use PDO;
 use PDOStatement;

@@ -1,8 +1,8 @@
 <?php
 
-namespace db\neoorm\migrations;
+namespace neo\orm\migrations;
 
-use db\neoorm\transactionManeger;
+use neo\orm\transactionManeger;
 
 class migrate{
 
@@ -21,7 +21,7 @@ class migrate{
          foreach ($tableFiles as $tableFile) {
             $className = 'app\\models\\' . str_replace(".php", "", $tableFile);
 
-            if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"db\neoorm\abstract\model")) {
+            if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"neo\orm\abstract\model")) {
 
                $tableInstance = $className::table();
                $allTableInstances[] = $className;
