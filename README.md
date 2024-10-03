@@ -113,11 +113,11 @@ $retorno = $db->delete($id);
 
 ### Criar uma Tabela
 
-Dentro da pasta tables deverá ser criada uma classe que irá representar sua tabela no banco de dados como o exemplo abaixo:
+Dentro da pasta app/models deverá ser criada uma classe que irá representar sua tabela no banco de dados como o exemplo abaixo:
 
 ```php
 <?php
-namespace app\db\tables;
+namespace app\models;
 
 use app\db\abstract\model;
 use app\db\migrations\table;
