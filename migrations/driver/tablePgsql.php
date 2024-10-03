@@ -198,7 +198,6 @@ class tablePgsql implements table
                     }
                 }
                 $sql .= "ALTER TABLE {$this->table} DROP COLUMN {$coluna};";
-                break;
             }  
         }
 
