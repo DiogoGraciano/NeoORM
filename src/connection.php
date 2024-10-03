@@ -2,8 +2,6 @@
 
 namespace diogodg\neoorm;
 
-require_once "config.php";
-
 use Exception;
 use PDO;
 use PDOException;
