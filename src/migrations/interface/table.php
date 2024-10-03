@@ -1,5 +1,5 @@
 <?php
-namespace neo\orm\migrations\interface;
+namespace diogodg/neoorm\migrations\interface;
 
 /**
  * Classe base para criação do banco de dados.

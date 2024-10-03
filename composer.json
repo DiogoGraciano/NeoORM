@@ -1,5 +1,5 @@
 {
-    "name": "neo/orm",
+    "name": "diogodg/neoorm",
     "description": "NeoORM é uma classe para mapeamento de um banco de dados Mysql/Pgsql",
     "type": "library",
     "license": "MIT",

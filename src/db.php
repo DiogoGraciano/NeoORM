@@ -1,5 +1,5 @@
 <?php
-namespace neo\orm;
+namespace diogodg/neoorm;
 use Exception;
 use PDO;
 use PDOStatement;

@@ -1,7 +1,7 @@
 <?php
-namespace neo\orm;
+namespace diogodg/neoorm;
 
-use neo\orm\connection;
+use diogodg/neoorm\connection;
 use Exception;
 
 class transactionManeger
