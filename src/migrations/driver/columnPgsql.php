@@ -1,8 +1,8 @@
 <?php
-namespace app\db\migrations\driver;
+namespace db\neoorm\migrations\driver;
 
-use app\db\migrations\table;
-use app\db\migrations\interface\column;
+use db\neoorm\migrations\table;
+use db\neoorm\migrations\interface\column;
 use stdClass;
 use Exception;
 

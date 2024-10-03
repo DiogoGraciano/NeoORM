@@ -1,5 +1,5 @@
 <?php
-namespace app\db\migrations\interface;
+namespace db\neoorm\migrations\interface;
 
 /**
  * Classe base para criação do banco de dados.

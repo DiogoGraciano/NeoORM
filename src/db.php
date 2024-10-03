@@ -1,5 +1,5 @@
 <?php
-namespace app\db;
+namespace db\neoorm;
 use Exception;
 use PDO;
 use PDOStatement;

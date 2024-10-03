@@ -1,9 +1,9 @@
 <?php
-namespace app\db\migrations;
+namespace db\neoorm\migrations;
 
-use app\db\migrations\driver\tableMysql;
-use app\db\migrations\driver\tablePgsql;
-use app\db\migrations\interface\table as tableInterface;
+use db\neoorm\migrations\driver\tableMysql;
+use db\neoorm\migrations\driver\tablePgsql;
+use db\neoorm\migrations\interface\table as tableInterface;
 
 /**
  * Classe base para criação do banco de dados.

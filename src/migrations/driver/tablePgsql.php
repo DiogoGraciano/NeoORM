@@ -1,9 +1,9 @@
 <?php
-namespace app\db\migrations\driver;
+namespace db\neoorm\migrations\driver;
 
-use app\db\connection;
-use app\db\migrations\interface\table;
-use app\db\migrations\column;
+use db\neoorm\connection;
+use db\neoorm\migrations\interface\table;
+use db\neoorm\migrations\column;
 use Exception;
 
 /**

@@ -117,12 +117,12 @@ Dentro da pasta tables deverá ser criada uma classe que irá representar sua ta
 
 ```php
 <?php
-namespace app\db\tables;
+namespace db\neoorm\tables;
 
-use app\db\abstract\model;
-use app\db\migrations\table;
-use app\db\migrations\column;
-use app\db\db;
+use db\neoorm\abstract\model;
+use db\neoorm\migrations\table;
+use db\neoorm\migrations\column;
+use db\neoorm\db;
 
 class estado extends model {
     //parametro obrigatorio que irá definir o nome da tabela no banco
@@ -187,7 +187,7 @@ basta chamar a seguinte classe como no exemplo abaixo
 
 <?php
 
-use app\db\migrations\migrate;
+use db\neoorm\migrations\migrate;
 
 //caso o parametro recreate seja verdadeiro irá ser removido todas as tabelas e depois recriadas novamente
 migrate::execute($recrete = false);

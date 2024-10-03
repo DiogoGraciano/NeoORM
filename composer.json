@@ -1,0 +1,19 @@
+{
+    "name": "db\neoorm",
+    "description": "NeoORM é uma classe para mapeamento de um banco de dados Mysql/Pgsql",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Db\\Neoorm\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Diogo Graciano",
+            "email": "138625607+DiogoGraciano@users.noreply.github.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}

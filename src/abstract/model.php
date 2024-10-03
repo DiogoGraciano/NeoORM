@@ -1,8 +1,8 @@
 <?php
 
-namespace app\db\abstract;
+namespace db\neoorm\abstract;
 
-use app\db\db;
+use db\neoorm\db;
 
 abstract class model extends db{
 

@@ -1,10 +1,9 @@
 <?php
 
-namespace app\db;
+namespace db\neoorm;
 
 require_once "config.php";
 
-use app\helpers\logger;
 use Exception;
 use PDO;
 use PDOException;
