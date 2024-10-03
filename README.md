@@ -3,8 +3,9 @@
 NeoORM é uma biblioteca PHP para gerenciamento de bancos de dados que permite criar e atualizar tabelas, além de inserir, atualizar, excluir e selecionar registros em uma ou mais tabelas.
 
 ## Instalação
-
+```bash
 composer require diogodg/neoorm
+```
 
 ## Exemplos
 
