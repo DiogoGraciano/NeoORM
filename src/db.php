@@ -192,6 +192,8 @@ class db
             $this->object[$column] = null;
         }
 
+        $this->clean();
+
         return $this;
     }
 
@@ -754,4 +756,3 @@ class db
 
 }
 ?>
-
