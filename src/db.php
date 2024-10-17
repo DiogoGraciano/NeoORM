@@ -428,8 +428,6 @@ class db
     protected function delete(string|int $id):bool
     {
         try {
-            
-
             if ($id){
                 $this->setBind($id);
                 
