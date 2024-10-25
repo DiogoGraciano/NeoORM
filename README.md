@@ -119,6 +119,32 @@ $db = new funcionario;
 $retorno = $db->delete($id);
 ```
 
+### Usando Transações
+
+```php
+    try{   
+        connection::beginTransaction();
+
+        if ($agenda->set()){ 
+
+            $agendaUsuario = new agendaUsuario;
+            $agendaUsuario->id_usuario = $user->id;
+            $agendaUsuario->id_agenda = $agenda->id;
+            $agendaUsuario->set();
+
+            if($agenda->id_funcionario){
+                $agendaFuncionario = new agendaFuncionario;
+                $agendaFuncionario->id_funcionario = $agenda->id_funcionario;
+                $agendaFuncionario->id_agenda = $agenda->id;
+                $agendaFuncionario->set();
+            }
+            connection::commit();
+        }
+    }catch (\exception $e){
+        connection::rollBack();
+    }
+```
+
 ### Outros Exemplos
 
 #### Utilizando a Classe DB Diretamente
