@@ -2,17 +2,13 @@
 
 namespace diogodg\neoorm\migrations;
 
-use diogodg\neoorm\transactionManeger;
+use diogodg\neoorm\connection;
 
 class migrate{
 
    public static function execute(bool $recreate){
       try{
-
-         transactionManeger::init();
-
-         transactionManeger::beginTransaction();
-         
+         connection::beginTransaction();
          $tableFiles = scandir(PATH_MODEL);
          
          $tablesWithForeignKeys = [];
@@ -22,7 +18,6 @@ class migrate{
             $className = MODEL_NAMESPACE."\\".str_replace(".php", "", $tableFile);
 
             if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"diogodg\\neoorm\abstract\model")) {
-
                $tableInstance = $className::table();
                $allTableInstances[] = $className;
                if ($tableInstance->hasForeignKey()) {
@@ -39,6 +34,7 @@ class migrate{
                   $tableInstance->execute($recreate);
                   if(method_exists($className, "seed"))
                      $className::seed();
+                  
                }
             }
          }
@@ -56,11 +52,9 @@ class migrate{
                }
             }
          }
-
-         transactionManeger::commit();
+         connection::commit();
       }
       catch(\Exception $e){
-         transactionManeger::rollBack();
          echo $e->getMessage();
       }
    }

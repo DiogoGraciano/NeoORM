@@ -168,7 +168,7 @@ class tablePgsql implements table
         $instructios = explode(";",$sql);
         foreach ($instructios as $query){
             if($query)
-                $this->pdo->query($query);
+                $this->pdo->exec($query);
         }
     }
 
@@ -354,7 +354,7 @@ class tablePgsql implements table
             $instructios = explode(";",$sql);
             foreach ($instructios as $query){
                 if($query)
-                    $this->pdo->query($query);
+                    $this->pdo->exec($query);
             }
         }
     }

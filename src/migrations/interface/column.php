@@ -18,7 +18,7 @@ interface column
 
     public function isForeingKey(table $foreingTable,string $foreingColumn = "id");
 
-    public function setDefaut(string|int|float|null $value = null);
+    public function setDefaut(string|int|float|null $value = null,bool $is_constant = false);
 
     public function getColumn();
 

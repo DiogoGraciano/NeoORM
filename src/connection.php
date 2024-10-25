@@ -73,12 +73,53 @@ class connection
                 self::$pdo = new PDO($dsn, DBUSER, DBPASSWORD);
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             } catch (PDOException $e) {
-                // Lança uma exceção personalizada
                 throw new Exception("Erro ao conectar ao banco de dados");
             }
         }
 
         return self::$pdo;
+    }
+
+    public static function beginTransaction(): void
+    {
+        try {
+            if (self::$pdo === null) {
+                self::$pdo = self::getConnection();
+            }
+
+            if (!self::$pdo->inTransaction()) {
+                self::$pdo->beginTransaction();
+            }
+        } catch (\PDOException $e) {
+            throw new Exception("Erro ao iniciar a transação: " . $e->getMessage());
+        }
+    }
+
+    public static function commit(): void
+    {
+        try {
+            if (self::$pdo->inTransaction()) {
+                self::$pdo->commit();
+            }
+        } catch (\PDOException $e) {
+            throw new Exception("Erro ao confirmar a transação: " . $e->getMessage());
+        }
+    }
+
+    public static function rollBack(): void
+    {
+        try {
+            if (self::$pdo->inTransaction()) {
+                self::$pdo->rollBack();
+            }
+        } catch (\PDOException $e) {
+            throw new Exception("Erro ao desfazer a transação: " . $e->getMessage());
+        }
+    }
+
+    public static function inTransaction(): bool
+    {
+        return self::$pdo ? self::$pdo->inTransaction() : false;
     }
 }
 ?>

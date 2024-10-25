@@ -130,9 +130,12 @@ class columnMysql implements column
         $this->column->foreingTableClass = $foreingTable;
     }
 
-    public function setDefaut(string|int|float|null $value = null)
+    public function setDefaut(string|int|float|null $value = null,bool $is_constant = false)
     {
-        if(is_string($value))
+        if($is_constant){
+            $this->column->defaut = "DEFAULT ".$value;
+        }
+        elseif(is_string($value))
             $this->column->defaut = "DEFAULT '".$value."'";
         elseif(is_null($value) && !$this->column->null) 
             $this->column->defaut = "DEFAULT NULL";

@@ -138,7 +138,7 @@ class columnPgsql implements column
         $this->column->foreingTableClass = $foreingTable;
     }
 
-    public function setDefaut(string|int|float|null $value = null)
+    public function setDefaut(string|int|float|null $value = null,bool $is_constant = false)
     {
         if(is_string($value))
             $this->column->defaut = "DEFAULT '".$value."'";

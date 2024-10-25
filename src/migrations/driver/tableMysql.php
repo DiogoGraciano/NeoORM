@@ -190,18 +190,11 @@ class tableMysql implements table
 
         $sql = str_replace(",)",")",$sql)." SET FOREIGN_KEY_CHECKS = 1;";
 
-        $sql = $this->pdo->prepare($sql);
-        if (!$sql) {
-            throw new \Exception("Erro ao preparar a consulta: " . implode(", ", $this->pdo->errorInfo()));
-        }
-        if (!$sql->execute()){
-            throw new \Exception("Erro ao executar o sql: " . implode(", ", $sql->errorInfo()));
-        }
+        $this->pdo->exec($sql);
     }
 
     public function execute($recreate = false)
     {
-
         if($recreate){
             $this->create();
         }
@@ -375,13 +368,7 @@ class tableMysql implements table
         }
 
         if($sql){
-            $sql = $this->pdo->prepare($sql);
-            if (!$sql) {
-                throw new \Exception("Erro ao preparar a sql: " . implode(", ", $this->pdo->errorInfo()));
-            }
-            if (!$sql->execute()){
-                throw new \Exception("Erro ao executar o sql: " . implode(", ", $sql->errorInfo()));
-            }
+            $this->pdo->exec($sql);
         }
     }
 

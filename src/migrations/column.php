@@ -42,8 +42,8 @@ class column implements columnInterface
         return $this;
     }
 
-    public function setDefaut(string|int|float|null $value = null){
-        $this->column->setDefaut($value);
+    public function setDefaut(string|int|float|null $value = null,bool $is_constant = false){
+        $this->column->setDefaut($value,$is_constant);
         return $this;
     }
 
