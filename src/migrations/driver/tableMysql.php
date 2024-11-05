@@ -170,13 +170,11 @@ class tableMysql implements table
     {
         $sql = "SET FOREIGN_KEY_CHECKS = 0; DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
         foreach ($this->columns as $column) {            
-            $sql .= str_replace(" , ","",implode(",",array_filter($column->columnSql)));
+            $sql .= implode(",",array_filter($column->columnSql));
         }
 
-        $sql = trim($sql);
-
         if($this->primary)
-            $sql .= " PRIMARY KEY (".implode(",",$this->primary).")";
+            $sql .= "PRIMARY KEY (".implode(",",$this->primary).")";
 
         $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$this->comment}';";
 
@@ -188,6 +186,7 @@ class tableMysql implements table
             $sql .= $index["sql"];
         }
 
+        $sql = str_replace(", )",")",$sql);
         $sql = str_replace(",)",")",$sql)." SET FOREIGN_KEY_CHECKS = 1;";
 
         $this->pdo->exec($sql);
