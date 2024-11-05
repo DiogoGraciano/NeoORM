@@ -133,7 +133,7 @@ class columnMysql implements column
     public function setDefaut(string|int|float|null $value = null,bool $is_constant = false)
     {
         if($is_constant){
-            $this->column->defaut = "DEFAULT ".$value;
+            $this->column->defaut = "DEFAULT ".$value." ";
         }
         elseif(is_string($value))
             $this->column->defaut = "DEFAULT '".$value."' ";
