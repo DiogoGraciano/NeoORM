@@ -136,11 +136,11 @@ class columnMysql implements column
             $this->column->defaut = "DEFAULT ".$value;
         }
         elseif(is_string($value))
-            $this->column->defaut = "DEFAULT '".$value."'";
+            $this->column->defaut = "DEFAULT '".$value."' ";
         elseif(is_null($value) && !$this->column->null) 
-            $this->column->defaut = "DEFAULT NULL";
+            $this->column->defaut = "DEFAULT NULL ";
         elseif(!is_null($value)) 
-            $this->column->defaut = "DEFAULT ".$value;
+            $this->column->defaut = "DEFAULT ".$value." ";
 
         $this->column->defautValue = $value;
     }
