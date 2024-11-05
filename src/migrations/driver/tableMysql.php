@@ -176,7 +176,7 @@ class tableMysql implements table
         $sql = trim($sql);
 
         if($this->primary)
-            $sql .= "PRIMARY KEY (".implode(",",$this->primary).")";
+            $sql .= " PRIMARY KEY (".implode(",",$this->primary).")";
 
         $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$this->comment}';";
 
