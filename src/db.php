@@ -425,6 +425,11 @@ class db
         throw new Exception('Tabela: '.$this->table." Objeto não está setado");
     }
 
+     /**
+     * Deleta registros da tabela com base em no id.
+     * 
+     * @return bool Retorna true se a operação for bem-sucedida, false caso contrário.
+     */
     protected function delete(string|int $id):bool
     {
         try {
@@ -476,14 +481,26 @@ class db
      * @param string $condition Condição da consulta.
      * @param mixed $value Valor a ser comparado.
      * @param string $operator Operador lógico (AND ou OR).
+     * @param bool $startGroupFilter Adiciona ( no começo do filter.
+     * @param bool $endGroupFilter Adiciona ) no final do filter.
      * @return db Retorna a instância atual da classe.
      */
-    protected function addFilter(string $field,string $logicalOperator,mixed $value,string $operatorCondition = db::AND):DB
+    protected function addFilter(string $field,string $logicalOperator,mixed $value,string $operatorCondition = db::AND,bool $startGroupFilter = false,bool $endGroupFilter = false):DB
     {
         $operatorCondition = strtoupper(trim($operatorCondition));
         if (!in_array($operatorCondition, [self::AND, self::OR])) {
             throw new Exception('Tabela: '.$this->table.' Filtro invalido');
         }
+
+        if($startGroupFilter)
+            $startGroupFilter = "(";
+        else 
+            $startGroupFilter = "";
+
+        if($endGroupFilter)
+            $endGroupFilter = ")";
+        else 
+            $endGroupFilter = "";
 
         if(str_contains(strtolower($logicalOperator),"in")){
             if(!is_array($value))
@@ -498,13 +515,13 @@ class db
             $inValue = rtrim($inValue,",");
             $inValue .= ")";
 
-            $filter = " " . $operatorCondition . " " . $field . " " . $logicalOperator . " " .$inValue;
+            $filter = " " . $operatorCondition . " ". $startGroupFilter . $field . " " . $logicalOperator . " " .$inValue . $endGroupFilter;
             $this->filters[] = $filter;
         }
         else{
             $this->setBind($value);
 
-            $filter = " " . $operatorCondition . " " . $field . " " . $logicalOperator . " ? ";
+            $filter = " " . $operatorCondition . " " . $startGroupFilter . $field . " " . $logicalOperator . " ? " . $endGroupFilter;
             $this->filters[] = $filter;
         }
 
