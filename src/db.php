@@ -146,13 +146,9 @@ class db
         }
 
         $trace = debug_backtrace();
-        trigger_error(
-            'Column not found: ' . $name .
-            ' in ' . $trace[0]['file'] .
-            ' on line ' . $trace[0]['line'],
-            E_USER_ERROR);
-
-        return null;
+        throw new Exception('Column not found: ' . $name .
+                            ' in ' . $trace[0]['file'] .
+                            ' on line ' . $trace[0]['line']);
     }
 
     public function __isset($name)
