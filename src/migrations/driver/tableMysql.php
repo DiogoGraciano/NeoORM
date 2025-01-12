@@ -112,7 +112,7 @@ class tableMysql implements table
         $this->dbname = $env["DBNAME"];
         
         if(!$this->validateName($this->table = strtolower(trim($table)))){
-            throw new Exception("Nome é invalido");
+            throw new Exception("Nome da tabela é invalido");
         }
     }
 
@@ -185,8 +185,10 @@ class tableMysql implements table
 
         $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$this->comment}';";
 
-        if($this->isAutoIncrement){
-            $sql .= "ALTER TABLE {$this->table} AUTO_INCREMENT = 1;";
+        if($this->isAutoIncrement && $this->primary){
+            foreach ($this->primary as $name){
+                $sql .= "ALTER TABLE {$this->table} MODIFY COLUMN {$name} INT AUTO_INCREMENT; ";
+            }
         }
         
         foreach ($this->indexs as $index) {
@@ -195,6 +197,10 @@ class tableMysql implements table
 
         $sql = str_replace(", )",")",$sql);
         $sql = str_replace(",)",")",$sql)." SET FOREIGN_KEY_CHECKS = 1;";
+
+        if($this->table == "usuario"){
+            echo $sql;
+        }
 
         $this->pdo->exec($sql);
     }
@@ -320,11 +326,6 @@ class tableMysql implements table
 
             if($this->comment && $tableInformation[0]->TABLE_COMMENT != $this->comment)
                 $sql .= "ALTER TABLE {$this->table} COMMENT = '{$this->comment}';";
-
-            if($this->isAutoIncrement && $tableInformation[0]->AUTO_INCREMENT == null){
-                $sql .= "ALTER TABLE {$this->table} AUTO_INCREMENT = 1";
-            }
-
         }
 
         if($this->indexs){

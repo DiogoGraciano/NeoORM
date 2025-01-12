@@ -333,10 +333,10 @@ class db
 
                 if (!isset($objectFilter[$this->columns[0]]) || !$objectFilter[$this->columns[0]]) {
                     // Incrementando o ID
-                    if(!$this->class::table()->getAutoIncrement())
-                        $objectFilter[$this->columns[0]] = $this->getlastIdBd() + 1;
+                    if($this->class::table()->getAutoIncrement())
+                        unset($objectFilter[$this->columns[0]]);
                     else
-                        $objectFilter[$this->columns[0]] = null;
+                        $objectFilter[$this->columns[0]] = $this->getlastIdBd() + 1;
 
                     // Montando a instrução SQL
                     $sql_instruction = "INSERT INTO {$this->table} (";
@@ -374,7 +374,7 @@ class db
 
                 $this->executeSql($sql_instruction);
 
-                $this->object[$this->columns[0]] = $objectFilter[$this->columns[0]];
+                $this->object[$this->columns[0]] = $this->pdo->lastInsertId();
 
                 return true;
             }

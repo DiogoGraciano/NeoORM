@@ -6,6 +6,8 @@ use diogodg\neoorm\db;
 
 abstract class model extends db{
 
+    public const table = "";
+
     private static array $lastCount = [];
 
     public function __construct($table,$class){
