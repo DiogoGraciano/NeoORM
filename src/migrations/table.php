@@ -35,8 +35,13 @@ class table implements tableInterface
         return $this;
     }
 
+    public function getAutoIncrement(){
+        $this->table->getAutoIncrement();
+        return $this;
+    }
+
     public function addIndex(string $name,array $columns){
-        $this->table->isAutoIncrement($name,$columns);
+        $this->table->addIndex($name,$columns);
         return $this;
     }
 

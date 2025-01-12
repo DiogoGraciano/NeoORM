@@ -115,6 +115,10 @@ class tablePgsql implements table
         return $this;
     }
 
+    public function getAutoIncrement(){
+        return $this->isAutoIncrement;
+    }
+
     public function addIndex(string $name,array $columns)
     {
         if(count($columns) < 2){

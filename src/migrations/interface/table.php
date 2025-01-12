@@ -11,6 +11,8 @@ interface table
 
     public function isAutoIncrement();
 
+    public function getAutoIncrement();
+    
     public function addIndex(string $name,array $columns);
 
     public function create();

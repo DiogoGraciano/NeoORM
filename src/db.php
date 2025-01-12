@@ -333,7 +333,10 @@ class db
 
                 if (!isset($objectFilter[$this->columns[0]]) || !$objectFilter[$this->columns[0]]) {
                     // Incrementando o ID
-                    $objectFilter[$this->columns[0]] = $this->getlastIdBd() + 1;
+                    if(!$this->class::table()->getAutoIncrement())
+                        $objectFilter[$this->columns[0]] = $this->getlastIdBd() + 1;
+                    else
+                        $objectFilter[$this->columns[0]] = null;
 
                     // Montando a instrução SQL
                     $sql_instruction = "INSERT INTO {$this->table} (";
