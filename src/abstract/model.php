@@ -1,10 +1,10 @@
 <?php
 
-namespace diogodg\neoorm\abstract;
+namespace Diogodg\Neoorm\Abstract;
 
-use diogodg\neoorm\db;
+use Diogodg\Neoorm\Db;
 
-abstract class model extends db{
+abstract class Model extends Db{
 
     public const table = "";
 

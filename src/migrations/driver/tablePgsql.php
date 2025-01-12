@@ -1,15 +1,15 @@
 <?php
-namespace diogodg\neoorm\migrations\driver;
+namespace Diogodg\Neoorm\Migrations\Driver;
 
-use diogodg\neoorm\connection;
-use diogodg\neoorm\migrations\interface\table;
-use diogodg\neoorm\migrations\column;
+use Diogodg\Neoorm\Connection;
+use Diogodg\Neoorm\Migrations\Interface\Table;
+use Diogodg\Neoorm\Migrations\Column;
 use Exception;
 
 /**
  * Classe base para criação do banco de dados.
  */
-class tablePgsql implements table
+class TablePgsql implements Table
 {
     /**
      * Nome da tabela.

@@ -1,8 +1,8 @@
 <?php
 
-namespace diogodg\neoorm\migrations;
+namespace Diogodg\Neoorm\Migrations;
 
-use diogodg\neoorm\connection;
+use Diogodg\Neoorm\Connection;
 
 class Migrate
 {

@@ -1,12 +1,12 @@
 <?php
-namespace diogodg\neoorm\migrations\interface;
+namespace Diogodg\Neoorm\Migrations\Interface;
 
-use diogodg\neoorm\migrations\table;
+use Diogodg\Neoorm\Migrations\Table;
 
 /**
  * Interface de Classe base para criação do banco de dados.
  */
-interface column
+interface Column
 {
     public function __construct(string $name,string $type,string|int|null $size = null);
 
@@ -16,7 +16,7 @@ interface column
 
     public function isUnique();
 
-    public function isForeingKey(table $foreingTable,string $foreingColumn = "id");
+    public function isForeingKey(Table $foreingTable,string $foreingColumn = "id");
 
     public function setDefaut(string|int|float|null $value = null,bool $is_constant = false);
 

@@ -1,14 +1,14 @@
 <?php
-namespace diogodg\neoorm\migrations;
+namespace Diogodg\Neoorm\Migrations;
 
-use diogodg\neoorm\migrations\driver\columnMysql;
-use diogodg\neoorm\migrations\driver\columnPgsql;
-use diogodg\neoorm\migrations\interface\column as columnInterface;
+use Diogodg\Neoorm\Migrations\Driver\ColumnMysql;
+use Diogodg\Neoorm\Migrations\Driver\ColumnPgsql;
+use Diogodg\Neoorm\Migrations\Interface\Column as ColumnInterface;
 
 /**
  * Classe base para criação do banco de dados.
  */
-class column implements columnInterface
+class Column implements ColumnInterface
 {
     private object $column;
 

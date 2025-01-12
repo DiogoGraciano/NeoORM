@@ -1,6 +1,6 @@
 <?php
 
-namespace diogodg\neoorm;
+namespace Diogodg\Neoorm;
 
 use Exception;
 use PDO;
@@ -9,7 +9,7 @@ use PDOException;
 /**
  * Classe para configuração e obtenção da conexão com o banco de dados.
  */
-class connection
+class Connection
 {
     /**
      * Instância do objeto PDO para a conexão com o banco de dados.

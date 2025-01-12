@@ -1,15 +1,15 @@
 <?php
-namespace diogodg\neoorm\migrations\driver;
+namespace Diogodg\Neoorm\Migrations\Driver;
 
-use diogodg\neoorm\migrations\table;
-use diogodg\neoorm\migrations\interface\column;
+use Diogodg\Neoorm\Migrations\Table;
+use Diogodg\Neoorm\Migrations\Interface\Column;
 use stdClass;
 use Exception;
 
 /**
  * Classe base para criação do banco de dados.
  */
-class columnMysql implements column
+class ColumnMysql implements Column
 {
     /**
      * Colunas.

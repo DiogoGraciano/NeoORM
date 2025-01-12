@@ -1,10 +1,10 @@
 <?php
-namespace diogodg\neoorm\migrations\interface;
+namespace Diogodg\Neoorm\Migrations\Interface;
 
 /**
  * Classe base para criação do banco de dados.
  */
-interface table
+interface Table
 {
    
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "");

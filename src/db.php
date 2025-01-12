@@ -1,5 +1,5 @@
 <?php
-namespace diogodg\neoorm;
+namespace Diogodg\Neoorm;
 use Exception;
 use PDO;
 use PDOStatement;
@@ -7,7 +7,7 @@ use PDOStatement;
 /**
  * Classe base para interação com o banco de dados.
  */
-class db
+class Db
 {
     /**
      * Tabela atual.

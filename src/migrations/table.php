@@ -1,14 +1,14 @@
 <?php
-namespace diogodg\neoorm\migrations;
+namespace Diogodg\Neoorm\Migrations;
 
-use diogodg\neoorm\migrations\driver\tableMysql;
-use diogodg\neoorm\migrations\driver\tablePgsql;
-use diogodg\neoorm\migrations\interface\table as tableInterface;
+use Diogodg\Neoorm\Migrations\Driver\TableMysql;
+use Diogodg\Neoorm\Migrations\Driver\TablePgsql;
+use Diogodg\Neoorm\Migrations\Interface\Table as TableInterface;
 
 /**
  * Classe base para criação do banco de dados.
  */
-class table implements tableInterface
+class Table implements TableInterface
 {
     private object $table;
 
