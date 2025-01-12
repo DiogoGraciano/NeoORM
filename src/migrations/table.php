@@ -76,7 +76,7 @@ class table implements tableInterface
         return $this->table->getColumnsName();
     }
     
-    public function exists()
+    public function exists():bool
     {
         return $this->table->exists();
     }
