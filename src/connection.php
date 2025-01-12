@@ -54,23 +54,25 @@ class connection
     {
         if (self::$pdo === null) {
             try {
-                if(DRIVER == "mysql"){
+                $env = parse_ini_file('.env');
+
+                if($env["DRIVER"] == "mysql"){
                     $dsn = sprintf(
-                        DRIVER.':host=%s;port=%s;dbname=%s;charset=%s',
-                        DBHOST,
-                        DBPORT,
-                        DBNAME,
-                        DBCHARSET
+                        $env["DRIVER"].':host=%s;port=%s;dbname=%s;charset=%s',
+                        $env["DBHOST"],
+                        $env["DBPORT"],
+                        $env["DBNAME"],
+                        $env["DBCHARSET"]
                     );
                 }else{
                     $dsn = sprintf(
-                        DRIVER.':host=%s;port=%s;dbname=%s',
-                        DBHOST,
-                        DBPORT,
-                        DBNAME
+                        $env["DRIVER"].':host=%s;port=%s;dbname=%s',
+                        $env["DBHOST"],
+                        $env["DBPORT"],
+                        $env["DBNAME"]
                     );
                 }
-                self::$pdo = new PDO($dsn, DBUSER, DBPASSWORD);
+                self::$pdo = new PDO($dsn, $env["DBUSER"],$env["DBPASSWORD"]);
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             } catch (PDOException $e) {
                 throw new Exception("Erro ao conectar ao banco de dados");

@@ -14,10 +14,12 @@ class table implements tableInterface
 
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "")
     {
-        if(DRIVER == "mysql"){
+        $env = parse_ini_file('.env');
+
+        if($env["DRIVER"] == "mysql"){
             $this->table = new tableMysql($table,$engine,$collate,$comment);
         }
-        elseif(DRIVER == "pgsql"){
+        elseif($env["DRIVER"] == "pgsql"){
             $this->table = new tablePgsql($table,$engine,$collate,$comment);
         }
     }

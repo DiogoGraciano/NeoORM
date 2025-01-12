@@ -8,14 +8,17 @@ class migrate{
 
    public static function execute(bool $recreate){
       try{
+
+         $env = parse_ini_file('.env');
+
          connection::beginTransaction();
-         $tableFiles = scandir(PATH_MODEL);
+         $tableFiles = scandir($env["PATH_MODEL"]);
          
          $tablesWithForeignKeys = [];
          $allTableInstances = [];
          
          foreach ($tableFiles as $tableFile) {
-            $className = MODEL_NAMESPACE."\\".str_replace(".php", "", $tableFile);
+            $className = $env["MODEL_NAMESPACE"]."\\".str_replace(".php", "", $tableFile);
 
             if (class_exists($className) && method_exists($className, "table") && is_subclass_of($className,"diogodg\\neoorm\abstract\model")) {
                $tableInstance = $className::table();
