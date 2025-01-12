@@ -7,20 +7,21 @@ NeoORM é uma biblioteca PHP para mapeamento de bancos de dados que permite cria
 composer require diogodg/neoorm
 ```
 
-definir em qualquer arquivo essas variaves com suas configurações de seu banco de dados
+criar um arquivo .env na raiz de seu projeto com as seguintes variaveis
 
-```php
-<?php
-    define("DRIVER","mysql");
-    define("DBHOST","localhost");
-    define("DBPORT","3306");
-    define("DBNAME","bd");
-    define("DBCHARSET","utf8mb4");
-    define("DBUSER","root");
-    define("DBPASSWORD","");
-    define("PATH_MODEL",__DIR__."/app/models");
-    define("MODEL_NAMESPACE","app\models");
-?>
+```env
+# Configuração do banco de dados
+DRIVER=mysql
+DBHOST=localhost
+DBPORT=3306
+DBNAME=bd
+DBCHARSET=utf8mb4
+DBUSER=root
+DBPASSWORD=
+
+# Configuração do caminho de seus Models
+PATH_MODEL=./app/models
+MODEL_NAMESPACE=app\models
 ```
 
 ## Exemplos
