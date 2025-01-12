@@ -81,7 +81,9 @@ class tablePgsql implements table
         // Inicia a Conexão
         $this->pdo = connection::getConnection();
 
-        $this->dbname = DBNAME;
+        $env = parse_ini_file('.env');
+
+        $this->dbname = $env["DBNAME"];
         
         if(!$this->validateName($this->table = strtolower(trim($table)))){
             throw new Exception("Nome é invalido");
@@ -109,17 +111,18 @@ class tablePgsql implements table
         return $this;
     }
 
-    public function isAutoIncrement()
+    public function isAutoIncrement():self
     {
         $this->isAutoIncrement = true;
         return $this;
     }
 
-    public function getAutoIncrement(){
+    public function getAutoIncrement():bool
+    {
         return $this->isAutoIncrement;
     }
 
-    public function addIndex(string $name,array $columns)
+    public function addIndex(string $name,array $columns):self
     {
         if(count($columns) < 2){
             throw new Exception("Numero de colunas tem que ser maior que 1"); 
@@ -363,27 +366,27 @@ class tablePgsql implements table
         }
     }
 
-    public function hasForeignKey()
+    public function hasForeignKey():bool
     {
         return $this->hasForeingKey;
     }
     
-    public function getForeignKeyTablesClasses()
+    public function getForeignKeyTablesClasses():array
     {
         return $this->foreningTablesClass;
     }
 
-    public function getTable()
+    public function getTable():string
     {
         return $this->table;
     }
 
-    public function getColumnsName()
+    public function getColumnsName():array
     {
         return array_keys($this->columns);
     }
     
-    public function exists()
+    public function exists():bool
     {
         $sql = $this->pdo->prepare("SELECT table_name FROM information_schema.tables WHERE table_catalog = :db AND table_name = :table LIMIT 1;");
         

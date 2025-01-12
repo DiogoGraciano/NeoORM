@@ -9,23 +9,23 @@ interface table
    
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "");
 
-    public function isAutoIncrement();
+    public function isAutoIncrement():self;
 
-    public function getAutoIncrement();
-    
-    public function addIndex(string $name,array $columns);
+    public function getAutoIncrement():bool;
+
+    public function addIndex(string $name,array $columns):self;
 
     public function create();
 
     public function execute($recreate = false);
 
-    public function hasForeignKey();
+    public function hasForeignKey():bool;
 
-    public function getForeignKeyTablesClasses();
+    public function getForeignKeyTablesClasses():array;
 
-    public function getTable();
+    public function getTable():string;
 
-    public function getColumnsName();
+    public function getColumnsName():array;
     
-    public function exists();
+    public function exists():bool;
 }

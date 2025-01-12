@@ -30,17 +30,18 @@ class table implements tableInterface
         return $this;
     }
 
-    public function isAutoIncrement(){
+    public function isAutoIncrement():self
+    {
         $this->table->isAutoIncrement();
         return $this;
     }
 
-    public function getAutoIncrement(){
-        $this->table->getAutoIncrement();
-        return $this;
+    public function getAutoIncrement():bool{
+        return $this->table->getAutoIncrement();
     }
 
-    public function addIndex(string $name,array $columns){
+    public function addIndex(string $name,array $columns):self
+    {
         $this->table->addIndex($name,$columns);
         return $this;
     }
@@ -55,22 +56,22 @@ class table implements tableInterface
         $this->table->execute($recreate);
     }
 
-    public function hasForeignKey()
+    public function hasForeignKey():bool
     {
         return $this->table->hasForeignKey();
     }
     
-    public function getForeignKeyTablesClasses()
+    public function getForeignKeyTablesClasses():array
     {
         return $this->table->getForeignKeyTablesClasses();
     }
 
-    public function getTable()
+    public function getTable():string
     {
         return $this->table->getTable();
     }
 
-    public function getColumnsName()
+    public function getColumnsName():array
     {
         return $this->table->getColumnsName();
     }
