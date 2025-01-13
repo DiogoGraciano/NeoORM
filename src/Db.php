@@ -123,7 +123,7 @@ class Db
      */
     public function __construct(string $table,string|null $class = null)
     {
-        $this->pdo = connection::getConnection();
+        $this->pdo = Connection::getConnection();
 
         $this->table = $table;
 
