@@ -107,9 +107,7 @@ class TableMysql implements Table
 
         $this->comment = $comment;
 
-        $env = parse_ini_file('.env');
-
-        $this->dbname = $env["DBNAME"];
+        $this->dbname = $_ENV["DBNAME"];
         
         if(!$this->validateName($this->table = strtolower(trim($table)))){
             throw new Exception("Nome da tabela é invalido");

@@ -16,15 +16,14 @@ class Migrate
    public static function execute(bool $recreate): void
    {
       try {
-         $env = self::loadEnv();
          connection::beginTransaction();
 
-         $tableFiles = scandir($env["PATH_MODEL"]);
+         $tableFiles = scandir($_ENV["PATH_MODEL"]);
          $tablesWithForeignKeys = [];
          $allTableInstances = [];
 
          foreach ($tableFiles as $tableFile) {
-            $className = self::getClassNameFromFile($env, $tableFile);
+            $className = self::getClassNameFromFile($tableFile);
 
             if (self::isValidModelClass($className)) {
                $tableInstance = $className::table();
@@ -49,16 +48,6 @@ class Migrate
          echo "Erro durante a migração: " . $e->getMessage() . PHP_EOL;
          throw $e;
       }
-   }
-
-   /**
-    * Carrega o arquivo de configuração .env
-    *
-    * @return array
-    */
-   private static function loadEnv(): array
-   {
-      return parse_ini_file('.env');
    }
 
    /**
@@ -139,9 +128,9 @@ class Migrate
     * @param string $tableFile
     * @return string
     */
-   private static function getClassNameFromFile(array $env, string $tableFile): string
+   private static function getClassNameFromFile(string $tableFile): string
    {
-      return $env["MODEL_NAMESPACE"] . "\\" . str_replace(".php", "", $tableFile);
+      return $_ENV["MODEL_NAMESPACE"] . "\\" . str_replace(".php", "", $tableFile);
    }
 
    /**
@@ -152,8 +141,7 @@ class Migrate
     */
    private static function getClassByTableName(string $tableName): string
    {
-      $env = self::loadEnv();
-      $modelNamespace = $env["MODEL_NAMESPACE"];
+      $modelNamespace = $_ENV["MODEL_NAMESPACE"];
 
       // Verifica possíveis variações de nomes
       $possibleClassNames = [
@@ -171,7 +159,7 @@ class Migrate
       }
 
       // Procura em todos os arquivos do diretório de modelos
-      $tableFiles = scandir($env["PATH_MODEL"]);
+      $tableFiles = scandir($_ENV["PATH_MODEL"]);
       foreach ($tableFiles as $tableFile) {
          $className = $modelNamespace . "\\" . str_replace(".php", "", $tableFile);
 

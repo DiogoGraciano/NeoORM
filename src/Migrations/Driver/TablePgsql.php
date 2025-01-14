@@ -81,9 +81,7 @@ class TablePgsql implements Table
         // Inicia a Conexão
         $this->pdo = connection::getConnection();
 
-        $env = parse_ini_file('.env');
-
-        $this->dbname = $env["DBNAME"];
+        $this->dbname = $_ENV["DBNAME"];
         
         if(!$this->validateName($this->table = strtolower(trim($table)))){
             throw new Exception("Nome é invalido");

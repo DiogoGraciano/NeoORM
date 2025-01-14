@@ -14,12 +14,10 @@ class Column implements ColumnInterface
 
     public function __construct(string $name,string $type,string|int|null $size = null)
     {
-        $env = parse_ini_file('.env');
-
-        if($env["DRIVER"] == "mysql"){
+        if($_ENV["DRIVER"] == "mysql"){
             $this->column = new columnMysql($name,$type,$size);
         }
-        elseif($env["DRIVER"] == "pgsql"){
+        elseif($_ENV["DRIVER"] == "pgsql"){
             $this->column = new columnPgsql($name,$type,$size);
         }
     }

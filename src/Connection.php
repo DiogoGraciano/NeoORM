@@ -54,25 +54,31 @@ class Connection
     {
         if (self::$pdo === null) {
             try {
-                $env = parse_ini_file('.env');
+                
+                if(!$_ENV){
+                    if(\file_exists('.env'))
+                        $_ENV = parse_ini_file('.env');
+                    elseif(\file_exists('../.env'))
+                        $_ENV = parse_ini_file('.env');
+                }
 
-                if($env["DRIVER"] == "mysql"){
+                if($_ENV["DRIVER"] == "mysql"){
                     $dsn = sprintf(
-                        $env["DRIVER"].':host=%s;port=%s;dbname=%s;charset=%s',
-                        $env["DBHOST"],
-                        $env["DBPORT"],
-                        $env["DBNAME"],
-                        $env["DBCHARSET"]
+                        $_ENV["DRIVER"].':host=%s;port=%s;dbname=%s;charset=%s',
+                        $_ENV["DBHOST"],
+                        $_ENV["DBPORT"],
+                        $_ENV["DBNAME"],
+                        $_ENV["DBCHARSET"]
                     );
                 }else{
                     $dsn = sprintf(
-                        $env["DRIVER"].':host=%s;port=%s;dbname=%s',
-                        $env["DBHOST"],
-                        $env["DBPORT"],
-                        $env["DBNAME"]
+                        $_ENV["DRIVER"].':host=%s;port=%s;dbname=%s',
+                        $_ENV["DBHOST"],
+                        $_ENV["DBPORT"],
+                        $_ENV["DBNAME"]
                     );
                 }
-                self::$pdo = new PDO($dsn, $env["DBUSER"],$env["DBPASSWORD"]);
+                self::$pdo = new PDO($dsn, $_ENV["DBUSER"],$_ENV["DBPASSWORD"]);
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             } catch (PDOException $e) {
                 throw new Exception("Erro ao conectar ao banco de dados");
