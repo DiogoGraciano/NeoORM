@@ -54,12 +54,12 @@ class Connection
     {
         if (self::$pdo === null) {
             try {
-                
+
                 if(!$_ENV){
                     if(\file_exists('.env'))
                         $_ENV = parse_ini_file('.env');
                     elseif(\file_exists('../.env'))
-                        $_ENV = parse_ini_file('.env');
+                        $_ENV = parse_ini_file('../.env');
                 }
 
                 if($_ENV["DRIVER"] == "mysql"){
