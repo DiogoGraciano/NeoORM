@@ -226,7 +226,7 @@ class TablePgsql implements Table
 
             if(!$inDb || $columnInformation){
                 
-                !$inDb?$operation = "ADD":$operation = "MODIFY";
+                !$inDb?$operation = "ADD":$operation = "ALTER";
 
                 if($inDb && $columnInformation["data_type"] == "character varying"){
                     $columnInformation["data_type"] = "varchar";
@@ -260,7 +260,11 @@ class TablePgsql implements Table
                     (str_replace("'","",explode("::",$columnInformation["column_default"]??"")[0]) != $column->defautValue))
                 {
                     $changed = true;
-                    $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type} {$column->null} {$column->defaut};";
+                    $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} TYPE {$column->type};";
+                    if($column->null)
+                        $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} SET {$column->null};";
+                    if($column->defaut)
+                        $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} SET {$column->defaut};";
                 }
                 if($inDb && ($column->foreingKey && $columnInformation["constraint_type"] == "FOREIGN KEY") && $changed){
                     $ForeingkeyName = $columnInformation["constraint_name"];
