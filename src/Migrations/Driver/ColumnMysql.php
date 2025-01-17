@@ -84,10 +84,9 @@ class ColumnMysql implements Column
             $name = strtolower(trim($name));
 
             if(!$this->validateName($name)){
-                throw new Exception("Nome é invalido");
+                throw new Exception($name.": Nome é invalido");
             }
 
-            
             $this->column->name = $name;
             $this->column->size = $size;
             $this->column->primary = "";
@@ -103,7 +102,7 @@ class ColumnMysql implements Column
             $this->column->foreingKey = "";
         }
         else 
-            throw new Exception("Tipo é invalido");
+            throw new Exception($name.": Tipo é invalido: ".$type);
         
     }
 
