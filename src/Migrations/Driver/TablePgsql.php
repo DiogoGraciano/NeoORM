@@ -260,7 +260,10 @@ class TablePgsql implements Table
                     (str_replace("'","",explode("::",$columnInformation["column_default"]??"")[0]) != $column->defautValue))
                 {
                     $changed = true;
-                    $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} TYPE {$column->type};";
+                    if($operation == "ADD")
+                        $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type};";
+                    else
+                        $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} TYPE {$column->type};";
                     if($column->null)
                         $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} SET {$column->null};";
                     if($column->defaut)

@@ -267,7 +267,7 @@ class Db
 
             return isset($count[0])?$count[0]:0;
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' Erro ao execultar o count');
+            throw new Exception('Tabela: '.$this->table.' Erro ao execultar o count '.$e->getMessage()." ".$e->getTraceAsString());
         }
     }
 
@@ -381,7 +381,7 @@ class Db
             }
             throw new Exception('Tabela: '.$this->table." Objeto não está setado");
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
         }
     }    
     /**
@@ -420,7 +420,7 @@ class Db
                 return true;
             }
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
         }
         throw new Exception('Tabela: '.$this->table." Objeto não está setado");
     }
@@ -442,7 +442,7 @@ class Db
             }
             throw new Exception('Tabela: '.$this->table." ID Precisa ser informado para excluir");
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
         }
     }
 
@@ -469,7 +469,7 @@ class Db
             
             return true;
         } catch (Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
         }
         return false;
     }
@@ -655,7 +655,7 @@ class Db
             return 0;
             
         }catch(Exception $e){
-            throw new Exception("Tabela: {$this->table} ".$e->getMessage());
+            throw new Exception("Tabela: {$this->table}".' '.$e->getMessage()." ".$e->getTraceAsString());
         }
     }
 
