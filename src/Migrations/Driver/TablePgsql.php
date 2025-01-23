@@ -126,6 +126,9 @@ class TablePgsql implements Table
             throw new Exception("Numero de colunas tem que ser maior que 1"); 
         }
         if($this->columns){
+
+            $name = strtolower($name);
+
             $tableColumns = array_keys($this->columns);
             $columnsFinal = [];
             foreach ($columns as $column){
@@ -319,11 +322,15 @@ class TablePgsql implements Table
         if($this->indexs){
             $indexInformation = $this->getIndexInformation();
             if($indexInformation){
-
                 $changed = [];
                 foreach ($indexInformation as $indexDb){
+
+                    if(str_contains($indexDb,"pkey")){
+                        continue;
+                    }
+
                     if(!in_array($indexDb,array_keys($this->indexs))){
-                        $sql .= "ALTER TABLE {$this->table} DROP INDEX {$indexDb};";
+                        $sql .= "DROP INDEX IF EXISTS {$indexDb};";
                         continue;
                     }
 
@@ -333,7 +340,7 @@ class TablePgsql implements Table
                             foreach ($this->indexs[$indexDb]["columns"] as $column){
                                 if(!in_array($column,$columns)){
                                     $changed[] = $indexDb;
-                                    $sql .= "ALTER TABLE {$this->table} DROP INDEX {$indexDb};";
+                                    $sql .= "DROP INDEX IF EXISTS {$indexDb};";
                                     break;
                                 }
                             }
@@ -452,12 +459,11 @@ class TablePgsql implements Table
             SELECT indexname 
             FROM pg_indexes 
             WHERE schemaname = 'public' 
-            AND tablename = :table 
-            GROUP BY indexname 
-            HAVING COUNT(indexname) > 1
+            AND tablename = :table
         ");
     
         $sql->bindParam(':table', $this->table);
+
         $sql->execute();
 
         $rows = [];
