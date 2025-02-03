@@ -117,6 +117,14 @@ class Db
     private bool $asArray = false;
 
     /**
+     * existe uma ordem?.
+     *
+     * @var bool
+    */
+    private bool $hasOrder = false;
+
+
+    /**
      * Construtor da classe.
      * 
      * @param string $table Nome da tabela do banco de dados.
@@ -267,7 +275,7 @@ class Db
 
             return isset($count[0])?$count[0]:0;
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' Erro ao execultar o count '.$e->getMessage()." ".$e->getTraceAsString());
+            throw new Exception('Tabela: '.$this->table.' Erro ao execultar o count');
         }
     }
 
@@ -381,7 +389,7 @@ class Db
             }
             throw new Exception('Tabela: '.$this->table." Objeto não está setado");
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
     }    
     /**
@@ -420,7 +428,7 @@ class Db
                 return true;
             }
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
         throw new Exception('Tabela: '.$this->table." Objeto não está setado");
     }
@@ -442,7 +450,7 @@ class Db
             }
             throw new Exception('Tabela: '.$this->table." ID Precisa ser informado para excluir");
         } catch (\Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
     }
 
@@ -469,7 +477,7 @@ class Db
             
             return true;
         } catch (Exception $e) {
-            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage()." ".$e->getTraceAsString());
+            throw new Exception('Tabela: '.$this->table.' '.$e->getMessage());
         }
         return false;
     }
@@ -537,7 +545,12 @@ class Db
      */
     protected function addOrder(string $column,string $order="DESC"):DB
     {
-        $this->propertys[] = " ORDER by ".$column." ".$order;
+        if($this->hasOrder)
+            $this->propertys[] = ",".$column." ".$order;
+        else 
+            $this->propertys[] = " ORDER by ".$column." ".$order;
+
+        $this->hasOrder = true;
 
         return $this;
     }
@@ -655,7 +668,7 @@ class Db
             return 0;
             
         }catch(Exception $e){
-            throw new Exception("Tabela: {$this->table}".' '.$e->getMessage()." ".$e->getTraceAsString());
+            throw new Exception("Tabela: {$this->table} ".$e->getMessage());
         }
     }
 
