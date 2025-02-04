@@ -235,9 +235,9 @@ basta chamar a seguinte classe como no exemplo abaixo
 
 <?php
 
-use Diogodg\Neoorm\Migrations\migrate;
+use Diogodg\Neoorm\Migrations\Migrate;
 
 //caso o parametro recreate seja verdadeiro irá ser removido todas as tabelas e depois recriadas novamente
-migrate::execute($recrete = false);
+(new Migrate)->execute($recrete = false);
 
 ```
