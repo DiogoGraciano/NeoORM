@@ -80,7 +80,14 @@ class TableMysql implements Table
      *
      * @var array
     */
-    private $foreningTablesClass = [];
+    private $foreningTables = [];
+
+    /**
+     * array de com os comandos sql
+     *
+     * @var array
+    */
+    private array $foreningKeySql = [];
 
     /**
      * outros comandos.
@@ -118,12 +125,7 @@ class TableMysql implements Table
     {
         $column = $column->getColumn();
 
-        if($column->foreingKey){
-            $this->hasForeingKey = true;
-            $this->foreningTablesClass[] = $column->foreingTableClass;
-        }
-
-        $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment}",$column->unique,$column->foreingKey," "];
+        $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment}",$column->unique," "];
 
         $this->columns[$column->name] = $column;
 
@@ -132,6 +134,30 @@ class TableMysql implements Table
             $this->columns = array_reverse($this->columns,true);
         }
 
+        return $this;
+    }
+
+    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT"):self
+    {
+        $onDeleteOptions = [
+            'CASCADE',
+            'SET NULL',
+            'SET DEFAULT',
+            'RESTRICT',
+            'NO ACTION'
+        ];
+
+        if(!in_array(strtoupper($onDelete),$onDeleteOptions)){
+            throw new Exception("onDelete na ForeingKey {$foreingTable}.{$foreingColumn} invalido para tabela: ".$this->table);
+        }
+
+        $this->hasForeingKey = true;
+        $this->foreningTables[] = $foreingTable;
+        $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
+                                    ".$this->table."_".$column."_".$foreingTable."_".$foreingColumn." 
+                                    FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
+                                    ({$foreingColumn}) ON DELETE {$onDelete};";
+        
         return $this;
     }
 
@@ -203,19 +229,17 @@ class TableMysql implements Table
         $this->pdo->exec($sql);
     }
 
-    public function execute($recreate = false)
-    {
-        if($recreate){
-            $this->create();
+    public function addForeingKeytoTable(){
+        foreach ($this->foreningKeySql as $sql) {
+            $this->pdo->exec($sql);
         }
+    }
 
+    public function update()
+    {
         $sql = "";
 
         $table = $this->getColumnsTable();
-
-        if(!$table){
-            return $this->create();
-        }
 
         foreach ($table as $column){
             if(!in_array($column["COLUMN_NAME"],array_keys($this->columns))){
@@ -384,7 +408,7 @@ class TableMysql implements Table
     
     public function getForeignKeyTables():array
     {
-        return $this->foreningTablesClass;
+        return $this->foreningTables;
     }
 
     public function getTable():string

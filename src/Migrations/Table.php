@@ -49,7 +49,7 @@ class Table implements TableInterface
         $this->table->create();
     }
 
-    public function execute($recreate = false)
+    public function update()
     {
         $this->table->execute($recreate);
     }
@@ -62,6 +62,15 @@ class Table implements TableInterface
     public function getForeignKeyTables():array
     {
         return $this->table->getForeignKeyTables();
+    }
+
+    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT"):self
+    {
+        return $this->table->addForeingKey($foreingTable,$foreingColumn,$column,$onDelete);
+    }
+
+    public function addForeingKeytoTable(){
+        return $this->table->addForeingKeytoTable();
     }
 
     public function getTable():string

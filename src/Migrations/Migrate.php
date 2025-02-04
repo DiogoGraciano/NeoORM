@@ -13,35 +13,44 @@ class Migrate
     * @return void
     * @throws \Exception
     */
-   public static function execute(bool $recreate): void
+   public function execute(bool $recreate): void
    {
       try {
+
+         if ($recreate) {
+            $this->recreateDatabase();
+         }
+
          connection::beginTransaction();
 
          $tableFiles = scandir($_ENV["PATH_MODEL"]);
-         $tablesWithForeignKeys = [];
-         $allTableInstances = [];
+         $allCreatedTableInstances = [];
 
          foreach ($tableFiles as $tableFile) {
-            $className = self::getClassNameFromFile($tableFile);
+            $className = $this->getClassNameFromFile($tableFile);
 
-            if (self::isValidModelClass($className)) {
+            if ($this->isValidModelClass($className)) {
                $tableInstance = $className::table();
-               $allTableInstances[] = $className;
-
-               if ($tableInstance->hasForeignKey()) {
-                  if (!$tableInstance->exists()) {
-                     $tablesWithForeignKeys[] = $tableInstance;
-                  } else {
-                     self::migrateTable($tableInstance, $className, $recreate);
-                  }
+               if (!$tableInstance->exists()) {
+                  $tableInstance->create();
+                  $allCreatedTableInstances[] = $tableInstance;
+                  echo "Criando " . $tableInstance->getTable() . PHP_EOL;
                } else {
-                  self::migrateTable($tableInstance, $className, $recreate);
+                  $tableInstance->update();
+                  echo "Atualizando " . $tableInstance->getTable() . PHP_EOL;
+               }
+
+               if (method_exists($className, "seed")) {
+                  $className::seed();
                }
             }
          }
 
-         self::resolveTableDependencies($tablesWithForeignKeys, $recreate);
+         foreach ($allCreatedTableInstances as $Instance) {
+            $tableInstance->addForeingKeytoTable();
+            echo "Adicionando FK " . $tableInstance->getTable() . PHP_EOL;
+         }
+
          connection::commit();
       } catch (\Exception $e) {
          connection::rollBack();
@@ -50,76 +59,54 @@ class Migrate
       }
    }
 
+   public function recreateDatabase()
+   {
+      if (!$_ENV) {
+         if (\file_exists('.env'))
+            $_ENV = parse_ini_file('.env');
+         elseif (\file_exists('../.env'))
+            $_ENV = parse_ini_file('../.env');
+         elseif (\file_exists('../../.env'))
+            $_ENV = parse_ini_file('../../.env');
+         elseif (\file_exists('../../../.env'))
+            $_ENV = parse_ini_file('../../../.env');
+      }
+
+      if ($_ENV["DRIVER"] == "mysql") {
+         $dsn = sprintf(
+            $_ENV["DRIVER"] . ':host=%s;port=%s;charset=%s',
+            $_ENV["DBHOST"],
+            $_ENV["DBPORT"],
+            $_ENV["DBCHARSET"]
+         );
+      } else {
+         $dsn = sprintf(
+            $_ENV["DRIVER"] . ':host=%s;port=%s',
+            $_ENV["DBHOST"],
+            $_ENV["DBPORT"]
+         );
+      }
+      $pdo = new \PDO($dsn, $_ENV["DBUSER"], $_ENV["DBPASSWORD"]);
+      $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+      $sql = "DROP DATABASE IF EXISTS ".$_ENV['DBNAME'];
+      $pdo->exec($sql);
+
+      $sql = "CREATE DATABASE IF NOT EXISTS ".$_ENV['DBNAME'];
+      $pdo->exec($sql);
+   }
+
    /**
     * Verifica se uma classe é válida como modelo
     *
     * @param string $className
     * @return bool
     */
-   private static function isValidModelClass(string $className): bool
+   private function isValidModelClass(string $className): bool
    {
       return class_exists($className) &&
          method_exists($className, "table") &&
          is_subclass_of($className, "diogodg\\neoorm\\abstract\\model");
-   }
-
-   /**
-    * Realiza a migração e execução de seeds para uma tabela
-    *
-    * @param object $tableInstance
-    * @param string $className
-    * @param bool $recreate
-    * @return void
-    */
-   private static function migrateTable(object $tableInstance, string $className, bool $recreate): void
-   {
-      echo "Migrando " . $tableInstance->getTable() . PHP_EOL;
-      $tableInstance->execute($recreate);
-
-      if (method_exists($className, "seed")) {
-         $className::seed();
-      }
-   }
-
-   /**
-    * Resolve dependências entre tabelas com chaves estrangeiras
-    *
-    * @param array $tablesWithForeignKeys
-    * @param bool $recreate
-    * @return void
-    */
-   private static function resolveTableDependencies(array $tablesWithForeignKeys, bool $recreate): void
-   {
-      $dependenciesResolved = false;
-
-      while (!$dependenciesResolved) {
-         $unresolvedTables = [];
-
-         foreach ($tablesWithForeignKeys as $table) {
-            $dependentTables = $table->getForeignKeyTables();
-            $unresolvedDependencies = [];
-
-            foreach ($dependentTables as $dependentTable) {
-               $dependentClass = self::getClassByTableName($dependentTable);
-               $dependentTableClass = $dependentClass::table();
-               if (!$dependentTableClass->exists()) {
-                  $unresolvedDependencies[] = $dependentTableClass;
-               } else {
-                  self::migrateTable($dependentTableClass, $dependentClass, $recreate);
-               }
-            }
-
-            if (empty($unresolvedDependencies) && !$table->exists()) {
-               $className = self::getClassByTableName($table->getTable());
-               self::migrateTable($table, $className, $recreate);
-            } else {
-               $unresolvedTables = array_merge($unresolvedTables, $unresolvedDependencies);
-            }
-         }
-
-         $dependenciesResolved = empty($unresolvedTables);
-         $tablesWithForeignKeys = $unresolvedTables;
-      }
    }
 
    /**
@@ -129,46 +116,8 @@ class Migrate
     * @param string $tableFile
     * @return string
     */
-   private static function getClassNameFromFile(string $tableFile): string
+   private function getClassNameFromFile(string $tableFile): string
    {
       return $_ENV["MODEL_NAMESPACE"] . "\\" . str_replace(".php", "", $tableFile);
-   }
-
-   /**
-    * Obtém a classe correspondente a uma tabela pelo nome
-    *
-    * @param string $tableName
-    * @return string
-    */
-   private static function getClassByTableName(string $tableName): string
-   {
-      $modelNamespace = $_ENV["MODEL_NAMESPACE"];
-
-      // Verifica possíveis variações de nomes
-      $possibleClassNames = [
-         $modelNamespace . "\\" . ucfirst($tableName),
-         $modelNamespace . "\\" . ucwords(str_replace("_", " ", $tableName)),
-         $modelNamespace . "\\" . strtolower($tableName),
-      ];
-
-      foreach ($possibleClassNames as $className) {
-         if (class_exists($className) && defined("$className::table")) {
-            if (constant("$className::table") === $tableName) {
-               return $className;
-            }
-         }
-      }
-
-      // Procura em todos os arquivos do diretório de modelos
-      $tableFiles = scandir($_ENV["PATH_MODEL"]);
-      foreach ($tableFiles as $tableFile) {
-         $className = $modelNamespace . "\\" . str_replace(".php", "", $tableFile);
-
-         if (self::isValidModelClass($className) && defined("$className::table") && constant("$className::table") === $tableName) {
-            return $className;
-         }
-      }
-
-      throw new \Exception("Classe correspondente à tabela '$tableName' não encontrada.");
    }
 }

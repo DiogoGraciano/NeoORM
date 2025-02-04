@@ -1,7 +1,6 @@
 <?php
 namespace Diogodg\Neoorm\Migrations\Driver;
 
-use Diogodg\Neoorm\Migrations\Table;
 use Diogodg\Neoorm\Migrations\Interface\Column;
 use stdClass;
 use Exception;
@@ -96,10 +95,6 @@ class ColumnMysql implements Column
             $this->column->comment = "";
             $this->column->defautValue = null;
             $this->column->commentValue = "";
-            $this->column->foreingTable = null;
-            $this->column->foreingColumn = null;
-            $this->column->foreingTableClass = null;
-            $this->column->foreingKey = "";
         }
         else 
             throw new Exception($name.": Tipo é invalido: ".$type);
@@ -119,14 +114,6 @@ class ColumnMysql implements Column
     public function isUnique()
     {
         $this->column->unique = "UNIQUE ({$this->column->name})";
-    }
-
-    public function isForeingKey(string $foreingTable,string $foreingColumn = "id")
-    {
-        $this->column->foreingKey = "FOREIGN KEY ({$this->column->name}) REFERENCES {$foreingTable}({$foreingColumn})";
-        $this->column->foreingTable = $foreingTable;
-        $this->column->foreingColumn = $foreingColumn;
-        $this->column->foreingTableClass = $foreingTable;
     }
 
     public function setDefaut(string|int|float|null $value = null,bool $is_constant = false)
