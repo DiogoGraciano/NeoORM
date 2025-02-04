@@ -112,7 +112,7 @@ class TablePgsql implements Table
         return $this;
     }
 
-    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT"):self
+    public function addForeingKey(string $foreingTable,string $column = "id",string $foreingColumn = "id",string $onDelete = "RESTRICT"):self
     {
         $onDeleteOptions = [
             'CASCADE',
@@ -215,11 +215,6 @@ class TablePgsql implements Table
 
     public function update()
     {
-
-        if($recreate){
-            $this->create();
-        }
-
         $sql = "";
 
         $table = $this->getColumnsTable();

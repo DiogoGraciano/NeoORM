@@ -137,7 +137,7 @@ class TableMysql implements Table
         return $this;
     }
 
-    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT"):self
+    public function addForeingKey(string $foreingTable,string $column = "id",string $foreingColumn = "id",string $onDelete = "RESTRICT"):self
     {
         $onDeleteOptions = [
             'CASCADE',

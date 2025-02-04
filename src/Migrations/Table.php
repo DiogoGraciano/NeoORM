@@ -28,7 +28,7 @@ class Table implements TableInterface
         return $this;
     }
 
-    public function isAutoIncrement():self
+    public function isAutoIncrement()
     {
         $this->table->isAutoIncrement();
         return $this;
@@ -38,7 +38,7 @@ class Table implements TableInterface
         return $this->table->getAutoIncrement();
     }
 
-    public function addIndex(string $name,array $columns):self
+    public function addIndex(string $name,array $columns)
     {
         $this->table->addIndex($name,$columns);
         return $this;
@@ -51,7 +51,7 @@ class Table implements TableInterface
 
     public function update()
     {
-        $this->table->execute($recreate);
+        $this->table->update();
     }
 
     public function hasForeignKey():bool
@@ -64,9 +64,9 @@ class Table implements TableInterface
         return $this->table->getForeignKeyTables();
     }
 
-    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT"):self
+    public function addForeingKey(string $foreingTable,string $column = "id",string $foreingColumn = "id",string $onDelete = "RESTRICT")
     {
-        return $this->table->addForeingKey($foreingTable,$foreingColumn,$column,$onDelete);
+        return $this->table->addForeingKey($foreingTable,$column,$foreingColumn,$onDelete);
     }
 
     public function addForeingKeytoTable(){

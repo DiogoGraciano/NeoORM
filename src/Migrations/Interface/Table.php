@@ -8,11 +8,11 @@ interface Table
 {
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "");
 
-    public function isAutoIncrement():self;
+    public function isAutoIncrement();
 
     public function getAutoIncrement():bool;
 
-    public function addIndex(string $name,array $columns):self;
+    public function addIndex(string $name,array $columns);
 
     public function create();
 
@@ -20,7 +20,7 @@ interface Table
 
     public function hasForeignKey():bool;
 
-    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT"):self;
+    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT");
 
     public function addForeingKeytoTable();
 
