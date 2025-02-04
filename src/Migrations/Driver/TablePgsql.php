@@ -75,6 +75,12 @@ class TablePgsql implements Table
     */
     private array $foreningKeySql = [];
 
+    /**
+     * array de colunas da tabela que tem fk
+     *
+     * @var array
+    */
+    private array $foreningColumn = [];
 
     /**
      * Nome da tabela.
@@ -128,6 +134,7 @@ class TablePgsql implements Table
 
         $this->hasForeingKey = true;
         $this->foreningTables[] = $foreingTable;
+        $this->foreningColumn[] = $column;
         $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
                                     ".$this->table."_".$column."_".$foreingTable."_".$foreingColumn." 
                                     FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
@@ -300,7 +307,7 @@ class TablePgsql implements Table
                     if($column->defaut)
                         $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} SET {$column->defaut};";
                 }
-                if($inDb && ($column->foreingKey && $columnInformation["constraint_type"] == "FOREIGN KEY") && $changed){
+                if($inDb && (in_array($column->name,$this->foreningColumn) && $columnInformation["constraint_type"] == "FOREIGN KEY") && $changed){
                     $ForeingkeyName = $columnInformation["constraint_name"];
                     if($ForeingkeyName){
                         $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};".$sql;
@@ -315,12 +322,12 @@ class TablePgsql implements Table
                 if($inDb && !$column->unique && $columnInformation["constraint_type"] == "UNIQUE"){
                     $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
-                if(!$inDb && $column->foreingKey || ($column->foreingKey && $columnInformation["constraint_type"] != "FOREIGN KEY") || ($column->foreingKey && $removed)){
+                if(!$inDb && in_array($column->name,$this->foreningColumn) || (in_array($column->name,$this->foreningColumn) && $columnInformation["constraint_type"] != "FOREIGN KEY") || (in_array($column->name,$this->foreningColumn) && $removed)){
                     $ForeingkeyName = $columnInformation["constraint_name"];
                     if($ForeingkeyName)
                         $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
                 }
-                if($inDb && !$column->foreingKey && $columnInformation["constraint_type"] == "FOREIGN KEY"){
+                if($inDb && !in_array($column->name,$this->foreningColumn) && $columnInformation["constraint_type"] == "FOREIGN KEY"){
                     $ForeingkeyName = $columnInformation["constraint_name"];
                     if($ForeingkeyName)
                         $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};".$sql;

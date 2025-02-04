@@ -90,6 +90,13 @@ class TableMysql implements Table
     private array $foreningKeySql = [];
 
     /**
+     * array de colunas da tabela que tem fk
+     *
+     * @var array
+    */
+    private array $foreningColumn = [];
+
+    /**
      * outros comandos.
      *
      * @var string
@@ -153,6 +160,7 @@ class TableMysql implements Table
 
         $this->hasForeingKey = true;
         $this->foreningTables[] = $foreingTable;
+        $this->foreningColumn[] = $column;
         $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
                                     ".$this->table."_".$column."_".$foreingTable."_".$foreingColumn." 
                                     FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
@@ -287,7 +295,7 @@ class TableMysql implements Table
                     $changed = true;
                     $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment};";
                 }
-                if($inDb && ($column->foreingKey && $columnInformation["COLUMN_KEY"] == "MUL") && $changed){
+                if($inDb && (in_array($column->name,$this->foreningColumn) && $columnInformation["COLUMN_KEY"] == "MUL") && $changed){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(isset($ForeingkeyName[0])){
                         $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
@@ -302,12 +310,12 @@ class TableMysql implements Table
                 if($inDb && !$column->unique && $columnInformation["COLUMN_KEY"] == "UNI"){
                     $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
-                if(!$inDb && $column->foreingKey || ($column->foreingKey && $columnInformation["COLUMN_KEY"] != "MUL") || ($column->foreingKey && $removed)){
+                if(!$inDb && in_array($column->name,$this->foreningColumn) || (in_array($column->name,$this->foreningColumn) && $columnInformation["COLUMN_KEY"] != "MUL") || (in_array($column->name,$this->foreningColumn) && $removed)){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(!isset($ForeingkeyName[0]))
                         $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
                 }
-                if($inDb && !$column->foreingKey && $columnInformation["COLUMN_KEY"] == "MUL"){
+                if($inDb && !in_array($column->name,$this->foreningColumn) && $columnInformation["COLUMN_KEY"] == "MUL"){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(isset($ForeingkeyName[0])){
                         $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
