@@ -182,13 +182,14 @@ class Estado extends Model {
 
     //metodo responsavel por criar a tabela
     public static function table(){
-        return (new table(self::table,comment:"Tabela de estados"))
-                ->addColumn((new column("id","INT"))->isPrimary()->setComment("ID da cidade"))
-                ->addColumn((new column("nome","VARCHAR",120))->isNotNull()->setComment("Nome do estado"))
-                ->addColumn((new column("uf","VARCHAR",2))->isNotNull()->setComment("nome da Uf"))
-                ->addColumn((new column("pais","INT"))->isNotNull()->isForeingKey(Pais::table)->setComment("id da pais do estado"))
-                ->addColumn((new column("ibge","INT"))->isUnique()->setComment("id do IBJE do estado"))
-                ->addColumn((new column("ddd","VARCHAR",50))->setComment("DDDs separado por , da Uf"));
+        return (new Table(self::table,comment:"Tabela de estados"))
+                ->addColumn((new Column("id","INT"))->isPrimary()->setComment("ID da cidade"))
+                ->addColumn((new Column("nome","VARCHAR",120))->isNotNull()->setComment("Nome do estado"))
+                ->addColumn((new Column("uf","VARCHAR",2))->isNotNull()->setComment("nome da Uf"))
+                ->addColumn((new Column("pais","INT"))->isNotNull()->setComment("id da pais do estado"))
+                ->addForeingKey(Pais::table,column:"pais")
+                ->addColumn((new Column("ibge","INT"))->isUnique()->setComment("id do IBJE do estado"))
+                ->addColumn((new Column("ddd","VARCHAR",50))->setComment("DDDs separado por , da Uf"));
     }
 
     //metodo responsavel por inserir dados iniciais na tabela 
