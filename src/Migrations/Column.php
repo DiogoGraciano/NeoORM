@@ -37,7 +37,7 @@ class Column implements ColumnInterface
         return $this;
     }
 
-    public function isForeingKey(table $foreingTable,string $foreingColumn = "id"){
+    public function isForeingKey(string $foreingTable,string $foreingColumn = "id"){
         $this->column->isForeingKey($foreingTable,$foreingColumn);
         return $this;
     }

@@ -121,7 +121,7 @@ class ColumnMysql implements Column
         $this->column->unique = "UNIQUE ({$this->column->name})";
     }
 
-    public function isForeingKey(table $foreingTable,string $foreingColumn = "id")
+    public function isForeingKey(string $foreingTable,string $foreingColumn = "id")
     {
         $this->column->foreingKey = "FOREIGN KEY ({$this->column->name}) REFERENCES {$foreingTable->getTable()}({$foreingColumn})";
         $this->column->foreingTable = $foreingTable->getTable();
