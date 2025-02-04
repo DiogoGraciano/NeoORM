@@ -373,7 +373,9 @@ class Db
 
                     // Adicionando cláusula WHERE
                     if ($this->filters) {
-                        $sql_instruction .= implode(" AND ", $this->filters);
+                        $sql_instruction .= implode(' ', array_map(function($filter, $i) {
+                            return $i === 0 ? substr($filter, 4) : $filter;
+                        }, $this->filters, array_keys($this->filters)));;
                     } else {
                         $sql_instruction .= "{$this->columns[0]}=?";
                         $this->setBind($objectFilter[$this->columns[0]]);
