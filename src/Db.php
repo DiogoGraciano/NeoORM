@@ -360,7 +360,7 @@ class Db
                     $sql_instruction .= $keysBD . ") VALUES (";
                     $valuesBD = rtrim($valuesBD, ",");
                     $sql_instruction .= $valuesBD . ");";
-                } elseif (isset($objectFilter[$this->columns[0]]) && $objectFilter[$this->columns[0]]) {
+                } elseif ((isset($objectFilter[$this->columns[0]]) && $objectFilter[$this->columns[0]]) || $this->filters) {
                     $sql_instruction = "UPDATE {$this->table} SET ";
                     foreach ($objectFilter as $key => $data) {
                         if ($key === $this->columns[0]) // Ignorando a primeira coluna (chave primária)
