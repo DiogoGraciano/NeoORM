@@ -46,9 +46,9 @@ class Migrate
             }
          }
 
-         foreach ($allCreatedTableInstances as $Instance) {
-            $tableInstance->addForeingKeytoTable();
-            echo "Adicionando FK " . $tableInstance->getTable() . PHP_EOL;
+         foreach ($allCreatedTableInstances as $instance) {
+            $instance->addForeingKeytoTable();
+            echo "Adicionando FK " . $instance->getTable() . PHP_EOL;
          }
 
          connection::commit();
@@ -89,11 +89,16 @@ class Migrate
       $pdo = new \PDO($dsn, $_ENV["DBUSER"], $_ENV["DBPASSWORD"]);
       $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
-      $sql = "DROP DATABASE IF EXISTS ".$_ENV['DBNAME'];
-      $pdo->exec($sql);
+      try {
+         $sql = $pdo->prepare("DROP DATABASE IF EXISTS ".$_ENV['DBNAME']);
+         $sql->execute();
 
-      $sql = "CREATE DATABASE IF NOT EXISTS ".$_ENV['DBNAME'];
-      $pdo->exec($sql);
+         $sql = $pdo->prepare("CREATE DATABASE ".$_ENV['DBNAME']);
+         $sql->execute();
+
+      } catch (\PDOException $e) {
+         echo "Erro ao criar banco de dados: " . $e->getMessage();
+      }
    }
 
    /**
