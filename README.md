@@ -31,25 +31,25 @@ MODEL_NAMESPACE=app\models
 #### Selecionar por ID
 ```php
 // Retorna um objeto com todas as colunas da tabela com base no $id informado
-$result = (new agendamento)->get($id);
+$result = (new Agendamento)->get($id);
 ```
 
 #### Selecionar por Nome
 ```php
 // Retorna um objeto com todas as colunas da tabela com base no $nome informado
-$result = (new agendamento)->get($nome, "nome");
+$result = (new Agendamento)->get($nome, "nome");
 ```
 
 #### Selecionar Todos os Registros
 ```php
 // Retorna um array de objetos com todas as colunas e registros da tabela
-$result = (new agendamento)->getAll();
+$result = (new Agendamento)->getAll();
 ```
 
 #### Selecionar com Filtros
 ```php
 // Retorna um array de objetos com todas as colunas da tabela com base nos filtros informados
-$db = new agendamento;
+$db = new Agendamento;
 $results = $db->addFilter("dt_ini", ">=", $dt_inicio)
               ->addFilter("dt_fim", "<=", $dt_fim)
               ->addFilter("id_agenda", "=", intval($id_agenda))
@@ -60,7 +60,7 @@ $results = $db->addFilter("dt_ini", ">=", $dt_inicio)
 #### Selecionar com Joins e Filtros
 ```php
 // Retorna um array de objetos com as colunas informadas, com base nos filtros e joins adicionados
-$db = new agendamento;
+$db = new Agendamento;
 $result = $db->addJoin("LEFT", "usuario", "usuario.id", "agendamento.id_usuario")
              ->addJoin("INNER", "agenda", "agenda.id", "agendamento.id_agenda")
              ->addJoin("LEFT", "cliente", "cliente.id", "agendamento.id_cliente")
@@ -72,7 +72,7 @@ $result = $db->addJoin("LEFT", "usuario", "usuario.id", "agendamento.id_usuario"
 #### Selecionar com Filtros e Limite
 ```php
 // Retorna um array de objetos com as colunas informadas que correspondem aos valores informados, com base nos filtros e limite especificados
-$db = new cidade;
+$db = new Cidade;
 $result = $db->addFilter("nome", "LIKE", "%" . $nome . "%")
              ->addLimit(1)
              ->selectByValues(["uf"], [$id_uf], true);
@@ -82,7 +82,7 @@ $result = $db->addFilter("nome", "LIKE", "%" . $nome . "%")
 
 ```php
 
-$values = new funcionario;
+$values = new Funcionario;
 
 // Se $values->id for null, vazio, ou 0, tentará realizar um comando INSERT. Caso contrário, tentará um UPDATE.
 $values->id = null; // ou "" ou 0
@@ -105,7 +105,7 @@ $retorno = $values->store();
 
 #### Excluir por Filtro
 ```php
-$db = new funcionario;
+$db = new Funcionario;
 
 // Retorna true ou false
 $retorno = $db->addFilter("nome", "=", "Diogo")->deleteByFilter();
@@ -165,9 +165,9 @@ Dentro da pasta app/models deverá ser criada uma classe que irá representar su
 
 ```php
 <?php
-namespace app\models;
+namespace App\Models;
 
-use Diogodg\Neoorm\abstract\Model;
+use Diogodg\Neoorm\Abstract\Model;
 use Diogodg\Neoorm\Migrations\Table;
 use Diogodg\Neoorm\Migrations\Column;
 
