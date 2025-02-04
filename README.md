@@ -167,12 +167,11 @@ Dentro da pasta app/models deverá ser criada uma classe que irá representar su
 <?php
 namespace app\models;
 
-use Diogodg\Neoorm\abstract\model;
-use Diogodg\Neoorm\Migrations\table;
-use Diogodg\Neoorm\Migrations\column;
-use Diogodg\Neoorm\db;
+use Diogodg\Neoorm\abstract\Model;
+use Diogodg\Neoorm\Migrations\Table;
+use Diogodg\Neoorm\Migrations\Column;
 
-class estado extends model {
+class Estado extends Model {
     //parametro obrigatorio que irá definir o nome da tabela no banco
     public const table = "estado";
 
@@ -187,7 +186,7 @@ class estado extends model {
                 ->addColumn((new column("id","INT"))->isPrimary()->setComment("ID da cidade"))
                 ->addColumn((new column("nome","VARCHAR",120))->isNotNull()->setComment("Nome do estado"))
                 ->addColumn((new column("uf","VARCHAR",2))->isNotNull()->setComment("nome da Uf"))
-                ->addColumn((new column("pais","INT"))->isNotNull()->isForeingKey(pais::table)->setComment("id da pais do estado"))
+                ->addColumn((new column("pais","INT"))->isNotNull()->isForeingKey(Pais::table)->setComment("id da pais do estado"))
                 ->addColumn((new column("ibge","INT"))->isUnique()->setComment("id do IBJE do estado"))
                 ->addColumn((new column("ddd","VARCHAR",50))->setComment("DDDs separado por , da Uf"));
     }
