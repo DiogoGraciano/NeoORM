@@ -123,8 +123,8 @@ class ColumnMysql implements Column
 
     public function isForeingKey(string $foreingTable,string $foreingColumn = "id")
     {
-        $this->column->foreingKey = "FOREIGN KEY ({$this->column->name}) REFERENCES {$foreingTable->getTable()}({$foreingColumn})";
-        $this->column->foreingTable = $foreingTable->getTable();
+        $this->column->foreingKey = "FOREIGN KEY ({$this->column->name}) REFERENCES {$foreingTable}({$foreingColumn})";
+        $this->column->foreingTable = $foreingTable;
         $this->column->foreingColumn = $foreingColumn;
         $this->column->foreingTableClass = $foreingTable;
     }

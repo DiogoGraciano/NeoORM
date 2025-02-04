@@ -96,15 +96,16 @@ class Migrate
          $unresolvedTables = [];
 
          foreach ($tablesWithForeignKeys as $table) {
-            $dependentClasses = $table->getForeignKeyTablesClasses();
+            $dependentTables = $table->getForeignKeyTables();
             $unresolvedDependencies = [];
 
-            foreach ($dependentClasses as $dependentClass) {
-               if (!$dependentClass->exists()) {
-                  $unresolvedDependencies[] = $dependentClass;
+            foreach ($dependentTables as $dependentTable) {
+               $dependentClass = self::getClassByTableName($dependentTable);
+               $dependentTableClass = $dependentClass::table();
+               if (!$dependentTableClass->exists()) {
+                  $unresolvedDependencies[] = $dependentTableClass;
                } else {
-                  $dependentClassName = self::getClassByTableName($dependentClass->getTable());
-                  self::migrateTable($dependentClass, $dependentClassName, $recreate);
+                  self::migrateTable($dependentTableClass, $dependentClass, $recreate);
                }
             }
 

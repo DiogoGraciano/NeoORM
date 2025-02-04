@@ -382,7 +382,7 @@ class TableMysql implements Table
         return $this->hasForeingKey;
     }
     
-    public function getForeignKeyTablesClasses():array
+    public function getForeignKeyTables():array
     {
         return $this->foreningTablesClass;
     }

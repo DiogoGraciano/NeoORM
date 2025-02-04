@@ -59,9 +59,9 @@ class Table implements TableInterface
         return $this->table->hasForeignKey();
     }
     
-    public function getForeignKeyTablesClasses():array
+    public function getForeignKeyTables():array
     {
-        return $this->table->getForeignKeyTablesClasses();
+        return $this->table->getForeignKeyTables();
     }
 
     public function getTable():string

@@ -21,7 +21,7 @@ interface Table
 
     public function hasForeignKey():bool;
 
-    public function getForeignKeyTablesClasses():array;
+    public function getForeignKeyTables():array;
 
     public function getTable():string;
 
