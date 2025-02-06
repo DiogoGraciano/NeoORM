@@ -1,5 +1,7 @@
 <?php
 
+namespace Diogodg\Neoorm\Migrations;
+
 use Diogodg\Neoorm\Abstract\Model;
 
 class GeneretePhpDoc
