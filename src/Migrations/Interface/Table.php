@@ -28,7 +28,7 @@ interface Table
 
     public function getTable():string;
 
-    public function getColumnsName():array;
+    public function getColumns():array;
     
     public function exists():bool;
 }

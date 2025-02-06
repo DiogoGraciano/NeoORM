@@ -14,7 +14,8 @@ abstract class Model extends Db{
         parent::__construct($table,$class);
     }
 
-    public function get($value="",string $column="id",int $limit = 1):array|object{
+    public function get(mixed $value="",string $column="id",int $limit = 1):array|object
+    {
         $retorno = false;
 
         if($limit){

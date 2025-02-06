@@ -428,9 +428,9 @@ class TablePgsql implements Table
         return $this->table;
     }
 
-    public function getColumnsName():array
+    public function getColumns():array
     {
-        return array_keys($this->columns);
+        return $this->columns;
     }
     
     public function exists():bool

@@ -424,7 +424,7 @@ class TableMysql implements Table
         return $this->table;
     }
 
-    public function getColumnsName():array
+    public function getColumns():array
     {
         return array_keys($this->columns);
     }
