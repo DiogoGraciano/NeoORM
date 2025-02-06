@@ -643,7 +643,7 @@ class Db
         }
 
         if($this->class && class_exists($this->class) && method_exists($this->class,"table")){
-            $this->columns = $this->class::table()->getColumnsName();
+            $this->columns = array_keys($this->class::table()->getColumns());
             return;
         }
 
