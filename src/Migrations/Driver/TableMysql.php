@@ -94,7 +94,7 @@ class TableMysql implements Table
      *
      * @var array
     */
-    private array $foreningColumn = [];
+    private array $foreningColumns = [];
 
     /**
      * outros comandos.
@@ -132,7 +132,7 @@ class TableMysql implements Table
     {
         $column = $column->getColumn();
 
-        $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment}",$column->unique," "];
+        $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->default} {$column->comment}",$column->unique," "];
 
         $this->columns[$column->name] = $column;
 
@@ -160,7 +160,7 @@ class TableMysql implements Table
 
         $this->hasForeingKey = true;
         $this->foreningTables[] = $foreingTable;
-        $this->foreningColumn[] = $column;
+        $this->foreningColumns[] = $column;
         $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
                                     ".$this->table."_".$column."_".$foreingTable."_".$foreingColumn." 
                                     FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
@@ -290,12 +290,12 @@ class TableMysql implements Table
                 if(!$inDb || strtolower(explode("(",$column->type)[0]) != $columnInformation["COLUMN_TYPE"] || 
                     ($columnInformation["IS_NULLABLE"] == "YES" && $column->null) || 
                     ($columnInformation["IS_NULLABLE"] == "NO" && !$column->null) || 
-                    $columnInformation["COLUMN_DEFAULT"] != $column->defautValue || 
+                    $columnInformation["COLUMN_DEFAULT"] != $column->defaultValue || 
                     $columnInformation["COLUMN_COMMENT"] != $column->commentValue){
                     $changed = true;
-                    $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type} {$column->null} {$column->defaut} {$column->comment};";
+                    $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type} {$column->null} {$column->default} {$column->comment};";
                 }
-                if($inDb && (in_array($column->name,$this->foreningColumn) && $columnInformation["COLUMN_KEY"] == "MUL") && $changed){
+                if($inDb && (in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] == "MUL") && $changed){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(isset($ForeingkeyName[0])){
                         $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
@@ -310,12 +310,14 @@ class TableMysql implements Table
                 if($inDb && !$column->unique && $columnInformation["COLUMN_KEY"] == "UNI"){
                     $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
-                if(!$inDb && in_array($column->name,$this->foreningColumn) || (in_array($column->name,$this->foreningColumn) && $columnInformation["COLUMN_KEY"] != "MUL") || (in_array($column->name,$this->foreningColumn) && $removed)){
+                if(!$inDb && in_array($column->name,$this->foreningColumns) || (in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] != "MUL") || (in_array($column->name,$this->foreningColumns) && $removed)){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
-                    if(!isset($ForeingkeyName[0]))
-                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$column->foreingTable}({$column->foreingColumn});";
+                    if(!isset($ForeingkeyName[0])){
+                        $key = array_search($column->name, $this->foreningColumns);
+                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$this->foreningColumnss[$key]});";
+                    }
                 }
-                if($inDb && !in_array($column->name,$this->foreningColumn) && $columnInformation["COLUMN_KEY"] == "MUL"){
+                if($inDb && !in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] == "MUL"){
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(isset($ForeingkeyName[0])){
                         $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;

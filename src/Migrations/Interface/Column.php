@@ -16,7 +16,7 @@ interface Column
 
     public function isUnique();
 
-    public function setDefaut(string|int|float|null $value = null,bool $is_constant = false);
+    public function setDefault(string|int|float|null $value = null,bool $is_constant = false);
 
     public function getColumn();
 

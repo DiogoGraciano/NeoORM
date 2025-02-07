@@ -99,9 +99,9 @@ class ColumnPgsql implements Column
             $this->column->primary = "";
             $this->column->unique = "";
             $this->column->null = "";
-            $this->column->defaut = "";
+            $this->column->default = "";
             $this->column->comment = "";
-            $this->column->defautValue = null;
+            $this->column->defaultValue = null;
             $this->column->commentValue = "";
         }
         else 
@@ -124,16 +124,16 @@ class ColumnPgsql implements Column
         $this->column->unique = "UNIQUE ({$this->column->name})";
     }
 
-    public function setDefaut(string|int|float|null $value = null,bool $is_constant = false)
+    public function setDefault(string|int|float|null $value = null,bool $is_constant = false)
     {
         if(is_string($value))
-            $this->column->defaut = "DEFAULT '".$value."'";
+            $this->column->default = "DEFAULT '".$value."'";
         elseif(is_null($value) && !$this->column->null) 
-            $this->column->defaut = "DEFAULT NULL";
+            $this->column->default = "DEFAULT NULL";
         elseif(!is_null($value)) 
-            $this->column->defaut = "DEFAULT ".$value;
+            $this->column->default = "DEFAULT ".$value;
 
-        $this->column->defautValue = $value;
+        $this->column->defaultValue = $value;
     }
 
     public function getColumn()
