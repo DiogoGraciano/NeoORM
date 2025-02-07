@@ -337,12 +337,11 @@ class TablePgsql implements Table
                 if ($inDb && !$column->unique && $columnInformation["constraint_type"] == "UNIQUE") {
                     $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
-                if ((!$inDb && in_array($column->name, $this->foreningColumns)) || (in_array($column->name, $this->foreningColumns) && $columnInformation["constraint_type"] != "FOREIGN KEY") || (in_array($column->name, $this->foreningColumns) && $removed)) {
+                if ((!$inDb && in_array($column->name, $this->foreningColumns)) || (in_array($column->name, $this->foreningColumns) && !($ForeingkeyName = $this->getForeignKeyName($column->name))) || (in_array($column->name, $this->foreningColumns) && $removed)) {
                     $key = array_search($column->name, $this->foreningColumns);
                     $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$this->foreningColumns[$key]});";
                 }
-                if ($inDb && !in_array($column->name, $this->foreningColumns) && $columnInformation["constraint_type"] == "FOREIGN KEY") {
-                    $ForeingkeyName = $columnInformation["constraint_name"];
+                if ($inDb && !in_array($column->name, $this->foreningColumns) && $ForeingkeyName = $this->getForeignKeyName($column->name)) {
                     if ($ForeingkeyName)
                         $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};" . $sql;
                 }
@@ -419,7 +418,6 @@ class TablePgsql implements Table
         if ($sql) {
             $instructios = explode(";", $sql);
             foreach ($instructios as $query) {
-                echo $query . PHP_EOL;
                 if ($query)
                     $this->pdo->exec($query);
             }
@@ -549,6 +547,36 @@ class TablePgsql implements Table
 
         return $rows;
     }
+
+    private function getForeignKeyName($column) {
+        $sql = $this->pdo->prepare("
+            SELECT conname 
+            FROM pg_constraint 
+            JOIN pg_class ON conrelid = pg_class.oid
+            JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+            JOIN pg_attribute ON attrelid = conrelid AND attnum = ANY(conkey)
+            WHERE pg_namespace.nspname = :schema
+            AND pg_class.relname = :table
+            AND pg_attribute.attname = :column
+            AND contype = 'f'
+            LIMIT 1
+        ");
+    
+        $schema = 'public';
+    
+        $sql->bindParam(':schema', $schema);
+        $sql->bindParam(':table', $this->table);
+        $sql->bindParam(':column', $column);
+        $sql->execute();
+    
+        $rows = [];
+    
+        if ($sql->rowCount() > 0) {
+            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+        }
+    
+        return $rows;
+    }    
 
     private function validateName($name)
     {
