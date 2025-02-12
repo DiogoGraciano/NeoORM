@@ -126,7 +126,9 @@ class ColumnPgsql implements Column
 
     public function setDefault(string|int|float|null $value = null,bool $is_constant = false)
     {
-        if(is_string($value))
+        if($is_constant)
+            $this->column->default = "DEFAULT ".$value;
+        elseif(is_string($value))
             $this->column->default = "DEFAULT '".$value."'";
         elseif(is_null($value) && !$this->column->null) 
             $this->column->default = "DEFAULT NULL";

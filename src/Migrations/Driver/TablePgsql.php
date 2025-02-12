@@ -308,7 +308,7 @@ class TablePgsql implements Table
                             $sql .= " {$column->null}";
                         }
                         if ($column->default) {
-                            $sql .= " DEFAULT {$column->default}";
+                            $sql .= " {$column->default}";
                         }
                     } else {
                         $sql .= " {$operation} COLUMN {$column->name} TYPE {$column->type}";
@@ -316,7 +316,7 @@ class TablePgsql implements Table
                             $sql .= "; ALTER TABLE {$this->table} ALTER COLUMN {$column->name} SET {$column->null}";
                         }
                         if ($column->default) {
-                            $sql .= "; ALTER TABLE {$this->table} ALTER COLUMN {$column->name} SET DEFAULT {$column->default}";
+                            $sql .= "; ALTER TABLE {$this->table} ALTER COLUMN {$column->name} SET {$column->default}";
                         }
                     }
 
