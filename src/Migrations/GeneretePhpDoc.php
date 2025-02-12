@@ -80,10 +80,8 @@ class GeneretePhpDoc
                 // Remove PHPDocs antigos, se existirem
                 $codigo = preg_replace('/^\/\*\*[\s\S]+?\*\/\n?/m', '', $codigo, 1);
 
-                $codigo = preg_replace('/\n{2,}/', "\n", $codigo); 
-
                 // Insere o novo PHPDoc antes da namespace
-                $codigo = preg_replace('/(final\s+class\s+\w+|abstract\s+class\s+\w+|class\s+\w+)/', "\n$phpDoc\n$1", $codigo, 1);
+                $codigo = preg_replace('/(final\s+class\s+\w+|abstract\s+class\s+\w+|class\s+\w+)/', "$phpDoc\n$1", $codigo, 1);
 
                 // Salva o arquivo com as anotações atualizadas
                 file_put_contents($filePath, $codigo);
