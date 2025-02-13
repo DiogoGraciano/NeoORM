@@ -263,6 +263,7 @@ class TableMysql implements Table
             }  
         }
 
+        $primaryKeyDb = [];
         foreach ($this->columns as $column) {
 
             $inDb = false;
@@ -314,7 +315,7 @@ class TableMysql implements Table
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(!isset($ForeingkeyName[0])){
                         $key = array_search($column->name, $this->foreningColumns);
-                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$this->foreningColumnss[$key]});";
+                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$this->foreningColumns[$key]});";
                     }
                 }
                 if($inDb && !in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] == "MUL"){

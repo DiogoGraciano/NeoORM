@@ -337,7 +337,7 @@ class TablePgsql implements Table
                 if ($inDb && !$column->unique && $columnInformation["constraint_type"] == "UNIQUE") {
                     $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
                 }
-                if ((!$inDb && in_array($column->name, $this->foreningColumns)) || (in_array($column->name, $this->foreningColumns) && !($ForeingkeyName = $this->getForeignKeyName($column->name))) || (in_array($column->name, $this->foreningColumns) && $removed)) {
+                if ((!$inDb && in_array($column->name, $this->foreningColumns)) || (in_array($column->name, $this->foreningColumns) && !$this->getForeignKeyName($column->name)) || (in_array($column->name, $this->foreningColumns) && $removed)) {
                     $key = array_search($column->name, $this->foreningColumns);
                     $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$this->foreningColumns[$key]});";
                 }
