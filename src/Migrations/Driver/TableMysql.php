@@ -429,7 +429,7 @@ class TableMysql implements Table
 
     public function getColumns():array
     {
-        return array_keys($this->columns);
+        return $this->columns;
     }
     
     public function exists():bool
