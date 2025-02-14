@@ -134,8 +134,8 @@ class TablePgsql implements Table
         }
 
         $this->hasForeingKey = true;
-        $this->foreningTables[] = $foreingTable;
-        $this->foreningColumns[] = $column;
+        $this->foreningTables[$foreingColumn] = $foreingTable;
+        $this->foreningColumns[$foreingColumn] = $column;
         $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
                                     " . $this->table . "_" . $column . "_" . $foreingTable . "_" . $foreingColumn . " 
                                     FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
@@ -339,7 +339,7 @@ class TablePgsql implements Table
                 }
                 if ((!$inDb && in_array($column->name, $this->foreningColumns)) || (in_array($column->name, $this->foreningColumns) && !$this->getForeignKeyName($column->name)) || (in_array($column->name, $this->foreningColumns) && $removed)) {
                     $key = array_search($column->name, $this->foreningColumns);
-                    $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$this->foreningColumns[$key]});";
+                    $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$key});";
                 }
                 if ($inDb && !in_array($column->name, $this->foreningColumns) && $ForeingkeyName = $this->getForeignKeyName($column->name)) {
                     if ($ForeingkeyName)

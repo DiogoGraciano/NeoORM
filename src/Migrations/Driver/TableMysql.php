@@ -159,8 +159,8 @@ class TableMysql implements Table
         }
 
         $this->hasForeingKey = true;
-        $this->foreningTables[] = $foreingTable;
-        $this->foreningColumns[] = $column;
+        $this->foreningTables[$foreingColumn] = $foreingTable;
+        $this->foreningColumns[$foreingColumn] = $column;
         $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
                                     ".$this->table."_".$column."_".$foreingTable."_".$foreingColumn." 
                                     FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
@@ -315,7 +315,7 @@ class TableMysql implements Table
                     $ForeingkeyName = $this->getForeingKeyName($column->name);
                     if(!isset($ForeingkeyName[0])){
                         $key = array_search($column->name, $this->foreningColumns);
-                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$this->foreningColumns[$key]});";
+                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$key});";
                     }
                 }
                 if($inDb && !in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] == "MUL"){
