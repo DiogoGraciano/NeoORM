@@ -64,9 +64,9 @@ trait DbFilters
     protected function addOrder(string $column, string $order = "DESC"): static
     {
         if ($this->hasOrder) {
-            $this->propertys[] = "," . $column . " " . $order;
+            $this->order[] = "," . $column . " " . $order;
         } else {
-            $this->propertys[] = " ORDER BY " . $column . " " . $order;
+            $this->order[] = " ORDER BY " . $column . " " . $order;
         }
 
         $this->hasOrder = true;
@@ -81,10 +81,10 @@ trait DbFilters
         $this->setBind($limitIni, true);
 
         if ($limitFim) {
-            $this->propertys[] = " LIMIT ?,?";
+            $this->limit[] = " LIMIT ?,?";
             $this->setBind($limitFim, true);
         } else {
-            $this->propertys[] = " LIMIT ?";
+            $this->limit[] = " LIMIT ?";
         }
 
         return $this;
@@ -95,7 +95,7 @@ trait DbFilters
      */
     protected function addOffset(int $offset): static
     {
-        $this->propertys[] = " OFFSET ?";
+        $this->limit[] = " OFFSET ?";
         $this->setBind($offset, true);
 
         return $this;
@@ -106,7 +106,46 @@ trait DbFilters
      */
     protected function addGroup(...$columns): static
     {
-        $this->propertys[] = " GROUP BY " . implode(",", $columns);
+        $this->group[] = " GROUP BY " . implode(",", $columns);
+        return $this;
+    }
+
+    /**
+     * Adiciona um filtro WHERE.
+     */
+    protected function addHaving(
+        string $field,
+        string $logicalOperator,
+        mixed $value,
+        OperatorCondition $operatorCondition = OperatorCondition::AND,
+        bool $startGroupFilter = false,
+        bool $endGroupFilter = false
+    ): static {
+        $start  = $startGroupFilter ? "(" : "";
+        $end    = $endGroupFilter   ? ")" : "";
+
+        // Caso seja IN, o $value deve ser array
+        if (str_contains(strtolower($logicalOperator), "in")) {
+            if (!is_array($value)) {
+                throw new Exception("Para operadores IN, o valor precisa ser um array.");
+            }
+            $inValue = "(";
+            foreach ($value as $data) {
+                $this->setBind($data);
+                $inValue .= "?,";
+            }
+            $inValue = rtrim($inValue, ",") . ")";
+
+            $filter = " " . $operatorCondition->name . " " . $start . $field .
+                      " " . $logicalOperator . " " . $inValue . $end;
+            $this->filters[] = $filter;
+        } else {
+            $this->setBind($value);
+            $filter = " " . $operatorCondition->name . " " . $start . $field .
+                      " " . $logicalOperator . " ? " . $end;
+            $this->filters[] = $filter;
+        }
+
         return $this;
     }
 

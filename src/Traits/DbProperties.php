@@ -50,11 +50,34 @@ trait DbProperties
     private bool $debug = false;
 
     /**
-     * Propriedades configuradas (ORDER, GROUP, LIMIT, etc).
+     * Propriedades configuradas (ORDER).
      *
      * @var array
      */
-    private array $propertys = [];
+    private array $order = [];
+
+
+    /**
+     * Propriedades configuradas (GROUP).
+     *
+     * @var array
+     */
+    private array $group = [];
+
+    /**
+     * Propriedades configuradas (HAVING).
+     *
+     * @var array
+     */
+    private array $having = [];
+
+    /**
+     * Propriedades configuradas (LIMIT).
+     *
+     * @var array
+     */
+    private array $limit = [];
+
 
     /**
      * Filtros configurados (WHERE).

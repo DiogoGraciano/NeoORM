@@ -39,7 +39,10 @@ trait DbSelect
                 return $i === 0 ? substr($filter, 4) : $filter;
             }, $this->filters, array_keys($this->filters)));
         }
-        $sql .= implode('', $this->propertys);
+        $sql .= implode('', $this->group);
+        $sql .= implode('', $this->having);
+        $sql .= implode('', $this->order);
+        $sql .= implode('', $this->limit);
 
         return $this->selectInstruction($sql);
     }
@@ -57,7 +60,10 @@ trait DbSelect
                 return $i === 0 ? substr($filter, 4) : $filter;
             }, $this->filters, array_keys($this->filters)));
         }
-        $sql .= implode('', $this->propertys);
+        $sql .= implode('', $this->group);
+        $sql .= implode('', $this->having);
+        $sql .= implode('', $this->order);
+        $sql .= implode('', $this->limit);
 
         return $this->selectInstruction($sql);
     }
@@ -76,7 +82,8 @@ trait DbSelect
                     return $i === 0 ? substr($filter, 4) : $filter;
                 }, $this->filters, array_keys($this->filters)));
             }
-            $sql .= implode('', $this->propertys);
+            $sql .= implode('', $this->group);
+            $sql .= implode('', $this->having);
 
             $stmt = $this->pdo->prepare($sql);
 
