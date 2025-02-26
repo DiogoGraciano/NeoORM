@@ -342,8 +342,8 @@ class TablePgsql implements Table
                     $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$key});";
                 }
                 if ($inDb && !in_array($column->name, $this->foreningColumns) && $ForeingkeyName = $this->getForeignKeyName($column->name)) {
-                    if ($ForeingkeyName)
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};" . $sql;
+                    if (isset($ForeingkeyName[0]))
+                        $sql = "ALTER TABLE {$this->table} DROP CONSTRAINT {$ForeingkeyName[0]};" . $sql;
                 }
             }
         }
