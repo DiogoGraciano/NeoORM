@@ -293,6 +293,7 @@ class TablePgsql implements Table
 
                 $removed = false;
                 $changed = false;
+
                 if (
                     !$inDb || strtolower(explode("(", $column->type)[0]) != $columnInformation["data_type"] ||
                     ($columnInformation["is_nullable"] == "YES" && $column->null) ||
@@ -300,7 +301,7 @@ class TablePgsql implements Table
                     (str_replace("'", "", explode("::", $columnInformation["column_default"] ?? "")[0]) != $column->defaultValue)
                 ) {
                     $changed = true;
-                    $sql = "ALTER TABLE {$this->table}";
+                    $sql .= "ALTER TABLE {$this->table}";
 
                     if ($operation == "ADD") {
                         $sql .= " ADD COLUMN {$column->name} {$column->type}";
