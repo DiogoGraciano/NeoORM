@@ -39,7 +39,6 @@ trait DbSelect
                 return $i === 0 ? substr($filter, 4) : $filter;
             }, $this->filters, array_keys($this->filters)));
         }
-        $sql .= implode('', $this->join);
         $sql .= implode('', $this->group);
         $sql .= implode('', $this->having);
         $sql .= implode('', $this->order);
@@ -61,7 +60,6 @@ trait DbSelect
                 return $i === 0 ? substr($filter, 4) : $filter;
             }, $this->filters, array_keys($this->filters)));
         }
-        $sql .= implode('', $this->join);
         $sql .= implode('', $this->group);
         $sql .= implode('', $this->having);
         $sql .= implode('', $this->order);
