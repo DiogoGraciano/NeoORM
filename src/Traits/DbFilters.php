@@ -40,18 +40,20 @@ trait DbFilters
             }
             $inValue = "(";
             foreach ($value as $data) {
-                $this->setBind($data);
-                $inValue .= "?,";
+                $inValue .= "{$this->setBind($data)},";
             }
             $inValue = rtrim($inValue, ",") . ")";
 
             $filter = " " . $operatorCondition->name . " " . $start . $field .
                       " " . $logicalOperator . " " . $inValue . $end;
             $this->filters[] = $filter;
-        } else {
-            $this->setBind($value);
+        }elseif (str_contains(strtolower($logicalOperator), "is")){
             $filter = " " . $operatorCondition->name . " " . $start . $field .
-                      " " . $logicalOperator . " ? " . $end;
+                      " " . $logicalOperator . " {$value} " . $end;
+            $this->filters[] = $filter;
+        } else {
+            $filter = " " . $operatorCondition->name . " " . $start . $field .
+                      " " . $logicalOperator . " {$this->setBind($value)} " . $end;
             $this->filters[] = $filter;
         }
 
@@ -78,13 +80,10 @@ trait DbFilters
      */
     protected function addLimit(int $limitIni, int $limitFim = 0): static
     {
-        $this->setBind($limitIni, true);
-
         if ($limitFim) {
-            $this->limit[] = " LIMIT ?,?";
-            $this->setBind($limitFim, true);
+            $this->limit[] = " LIMIT {$this->setBind($limitIni)},{$this->setBind($limitFim)}";
         } else {
-            $this->limit[] = " LIMIT ?";
+            $this->limit[] = " LIMIT {$this->setBind($limitIni)}";
         }
 
         return $this;
@@ -95,9 +94,7 @@ trait DbFilters
      */
     protected function addOffset(int $offset): static
     {
-        $this->limit[] = " OFFSET ?";
-        $this->setBind($offset, true);
-
+        $this->limit[] = " OFFSET {$this->setBind($offset)}";
         return $this;
     }
 
@@ -131,19 +128,17 @@ trait DbFilters
             }
             $inValue = "(";
             foreach ($value as $data) {
-                $this->setBind($data);
-                $inValue .= "?,";
+                $inValue .= "{$this->setBind($data)},";
             }
             $inValue = rtrim($inValue, ",") . ")";
 
             $filter = " " . $operatorCondition->name . " " . $start . $field .
                       " " . $logicalOperator . " " . $inValue . $end;
-            $this->filters[] = $filter;
+            $this->having[] = $filter;
         } else {
-            $this->setBind($value);
             $filter = " " . $operatorCondition->name . " " . $start . $field .
-                      " " . $logicalOperator . " ? " . $end;
-            $this->filters[] = $filter;
+                      " " . $logicalOperator . " {$this->setBind($value)} " . $end;
+            $this->having[] = $filter;
         }
 
         return $this;

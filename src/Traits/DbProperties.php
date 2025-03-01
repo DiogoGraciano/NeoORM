@@ -94,20 +94,6 @@ trait DbProperties
     private array $valuesBind = [];
 
     /**
-     * Valores do bindParam das Propertys (LIMIT, OFFSET etc).
-     *
-     * @var array
-     */
-    private array $valuesBindProperty = [];
-
-    /**
-     * Contador de parâmetros do bindParam.
-     *
-     * @var int
-     */
-    private int $counterBind = 1;
-
-    /**
      * Instância do PDO.
      *
      * @var PDO

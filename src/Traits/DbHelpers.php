@@ -17,11 +17,12 @@ trait DbHelpers{
     private function clean(): void
     {
         $this->joins             = [];
-        $this->propertys         = [];
+        $this->having            = [];
+        $this->limit             = [];
+        $this->group             = [];
+        $this->order             = [];
         $this->filters           = [];
         $this->valuesBind        = [];
-        $this->valuesBindProperty = [];
-        $this->counterBind       = 1;
         $this->hasOrder          = false;
     }
 
@@ -100,7 +101,7 @@ trait DbHelpers{
     /**
      * Define os valores de bind (parâmetros) para o PDO.
      */
-    private function setBind(mixed $value, bool $property = false): void
+    private function setBind(mixed $value):string
     {
         if (is_int($value)) {
             $param = PDO::PARAM_INT;
@@ -112,12 +113,11 @@ trait DbHelpers{
             $param = PDO::PARAM_STR;
         }
 
-        if ($property) {
-            $this->valuesBindProperty[] = [$value, $param];
-        } else {
-            $this->valuesBind[$this->counterBind] = [$value, $param];
-            $this->counterBind++;
-        }
+        $md5 = md5(microtime(true)+rand());
+
+        $this->valuesBind[$md5] = [$value, $param];
+
+        return ":".$md5;
     }
 
     /**
@@ -131,15 +131,9 @@ trait DbHelpers{
             $stmt->debugDumpParams();
         }
 
-        $lastcount = 0;
-        if ($this->valuesBind || $this->valuesBindProperty) {
+        if ($this->valuesBind) {
             foreach ($this->valuesBind as $key => $data) {
-                $lastcount = $key;
                 $stmt->bindParam($key, $data[0], $data[1]);
-            }
-            foreach ($this->valuesBindProperty as $data) {
-                $lastcount++;
-                $stmt->bindParam($lastcount, $data[0], $data[1]);
             }
         }
 

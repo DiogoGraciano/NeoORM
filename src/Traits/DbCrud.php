@@ -42,8 +42,7 @@ trait DbCrud
                     $valuesBD = "";
 
                     foreach ($objectFilter as $key => $data) {
-                        $valuesBD .= "?,";
-                        $this->setBind($data);
+                        $valuesBD .= "{$this->setBind($data)},";
                     }
                     $keysBD   = rtrim($keysBD, ",");
                     $valuesBD = rtrim($valuesBD, ",");
@@ -56,8 +55,7 @@ trait DbCrud
                         if ($key === $this->columns[0]) {
                             continue; // não atualiza a PK
                         }
-                        $sql_instruction .= "{$key} = ?,";
-                        $this->setBind($data);
+                        $sql_instruction .= "{$key} = {$this->setBind($data)},";
                     }
                     $sql_instruction = rtrim($sql_instruction, ",") . " WHERE ";
 
@@ -67,8 +65,7 @@ trait DbCrud
                             return $i === 0 ? substr($filter, 4) : $filter;
                         }, $this->filters, array_keys($this->filters)));
                     } else {
-                        $sql_instruction .= "{$this->columns[0]} = ?";
-                        $this->setBind($objectFilter[$this->columns[0]]);
+                        $sql_instruction .= "{$this->columns[0]} = {$this->setBind($objectFilter[$this->columns[0]])}";
                     }
                 }
 
@@ -104,8 +101,7 @@ trait DbCrud
                 $valuesBD = "";
 
                 foreach ($objectFilter as $data) {
-                    $valuesBD .= "?,";
-                    $this->setBind($data);
+                    $valuesBD .= "?,{$this->setBind($data)}";
                 }
                 $keysBD   = rtrim($keysBD, ",");
                 $valuesBD = rtrim($valuesBD, ",");
@@ -129,8 +125,7 @@ trait DbCrud
     {
         try {
             if ($id) {
-                $this->setBind($id);
-                $sql = "DELETE FROM {$this->table} WHERE {$this->columns[0]} = ?";
+                $sql = "DELETE FROM {$this->table} WHERE {$this->columns[0]} = {$this->setBind($id)}";
                 $this->executeSql($sql);
                 return true;
             }
