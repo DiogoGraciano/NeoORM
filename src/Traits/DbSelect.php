@@ -85,7 +85,29 @@ trait DbSelect
             $sql .= implode('', $this->group);
             $sql .= implode('', $this->having);
 
-            $stmt = $this->executeSql($sql);
+            $stmt = $this->pdo->prepare($sql);
+
+            if ($this->debug) {
+                $stmt->debugDumpParams();
+            }
+
+            $lastcount = 1;
+            if ($this->valuesBind) {
+                foreach ($this->valuesBind as $key => $data) {
+                    $lastcount = $key;
+                    $stmt->bindParam($key, $data[0], $data[1]);
+                }
+                foreach ($this->valuesBindProperty as $data) {
+                    $stmt->bindParam($lastcount, $data[0], $data[1]);
+                    $lastcount++;
+                }
+            }
+
+            $stmt->execute();
+
+            if ($this->debug) {
+                $stmt->debugDumpParams();
+            }
 
             $count = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
 
