@@ -91,15 +91,9 @@ trait DbSelect
                 $stmt->debugDumpParams();
             }
 
-            $lastcount = 1;
             if ($this->valuesBind) {
                 foreach ($this->valuesBind as $key => $data) {
-                    $lastcount = $key;
                     $stmt->bindParam($key, $data[0], $data[1]);
-                }
-                foreach ($this->valuesBindProperty as $data) {
-                    $stmt->bindParam($lastcount, $data[0], $data[1]);
-                    $lastcount++;
                 }
             }
 
