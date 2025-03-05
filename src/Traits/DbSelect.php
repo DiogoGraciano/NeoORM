@@ -71,7 +71,7 @@ trait DbSelect
     /**
      * Conta os registros de acordo com os filtros/joins definidos.
      */
-    protected function count(bool $clean): int
+    protected function count(bool $clean = false): int
     {
         try {
             $sql = 'SELECT count(*) FROM ' . $this->table;
