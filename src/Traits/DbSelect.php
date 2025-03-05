@@ -71,7 +71,7 @@ trait DbSelect
     /**
      * Conta os registros de acordo com os filtros/joins definidos.
      */
-    protected function count(): int
+    protected function count(bool $clean): int
     {
         try {
             $sql = 'SELECT count(*) FROM ' . $this->table;
@@ -101,6 +101,10 @@ trait DbSelect
 
             if ($this->debug) {
                 $stmt->debugDumpParams();
+            }
+
+            if($clean){
+                $this->clean();
             }
 
             $count = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
