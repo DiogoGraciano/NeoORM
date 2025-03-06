@@ -297,8 +297,8 @@ class TablePgsql implements Table
                 if (
                     !$inDb ||
                     ($column->size != $columnInformation["character_maximum_length"] ||
-                     $column->size != $columnInformation["numeric_format"]
-                    )($columnInformation["is_nullable"] == "YES" && $column->null) ||
+                     $column->size != $columnInformation["numeric_format"]) ||
+                    ($columnInformation["is_nullable"] == "YES" && $column->null) ||
                     ($columnInformation["is_nullable"] == "NO" && !$column->null && !$column->primary) ||
                     (str_replace("'", "", explode("::", $columnInformation["column_default"] ?? "")[0]) != $column->defaultValue)
                 ) {
