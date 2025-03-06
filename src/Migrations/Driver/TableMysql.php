@@ -144,7 +144,7 @@ class TableMysql implements Table
         return $this;
     }
 
-    public function addForeingKey(string $foreingTable,string $column = "id",string $foreingColumn = "id",string $onDelete = "RESTRICT"):self
+    public function addForeignKey(string $foreignTable,string $column = "id",string $foreignColumn = "id",string $onDelete = "RESTRICT"):self
     {
         $onDeleteOptions = [
             'CASCADE',
@@ -155,16 +155,16 @@ class TableMysql implements Table
         ];
 
         if(!in_array(strtoupper($onDelete),$onDeleteOptions)){
-            throw new Exception("onDelete na ForeingKey {$foreingTable}.{$foreingColumn} invalido para tabela: ".$this->table);
+            throw new Exception("onDelete na ForeingKey {$foreignTable}.{$foreignColumn} invalido para tabela: ".$this->table);
         }
 
         $this->hasForeingKey = true;
-        $this->foreningTables[$foreingColumn] = $foreingTable;
-        $this->foreningColumns[$foreingColumn] = $column;
+        $this->foreningTables[$foreignColumn] = $foreignTable;
+        $this->foreningColumns[$foreignColumn] = $column;
         $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
-                                    ".$this->table."_".$column."_".$foreingTable."_".$foreingColumn." 
-                                    FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
-                                    ({$foreingColumn}) ON DELETE {$onDelete};";
+                                    ".$this->table."_".$column."_".$foreignTable."_".$foreignColumn." 
+                                    FOREIGN KEY ({$column}) REFERENCES {$foreignTable} 
+                                    ({$foreignColumn}) ON DELETE {$onDelete};";
         
         return $this;
     }
@@ -237,7 +237,7 @@ class TableMysql implements Table
         $this->pdo->exec($sql);
     }
 
-    public function addForeingKeytoTable(){
+    public function addForeignKeytoTable(){
         foreach ($this->foreningKeySql as $sql) {
             $this->pdo->exec($sql);
         }
