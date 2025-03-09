@@ -101,7 +101,7 @@ trait DbCrud
                 $valuesBD = "";
 
                 foreach ($objectFilter as $data) {
-                    $valuesBD .= "?,{$this->setBind($data)}";
+                    $valuesBD .= "{$this->setBind($data)},";
                 }
                 $keysBD   = rtrim($keysBD, ",");
                 $valuesBD = rtrim($valuesBD, ",");
