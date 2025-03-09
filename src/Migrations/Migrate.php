@@ -47,7 +47,7 @@ class Migrate
          }
 
          foreach ($allCreatedTableInstances as $instance) {
-            $instance->addForeingKeytoTable();
+            $instance->addForeignKeytoTable();
             echo "Adicionando FK " . $instance->getTable() . PHP_EOL;
          }
 

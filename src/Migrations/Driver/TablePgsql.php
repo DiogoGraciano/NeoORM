@@ -119,7 +119,7 @@ class TablePgsql implements Table
         return $this;
     }
 
-    public function addForeingKey(string $foreingTable, string $column = "id", string $foreingColumn = "id", string $onDelete = "RESTRICT"): self
+    public function addForeignKey(string $foreignTable, string $column = "id", string $foreignColumn = "id", string $onDelete = "RESTRICT"): self
     {
         $onDeleteOptions = [
             'CASCADE',
@@ -130,16 +130,16 @@ class TablePgsql implements Table
         ];
 
         if (!in_array(strtoupper($onDelete), $onDeleteOptions)) {
-            throw new Exception("onDelete na ForeingKey {$foreingTable}.{$foreingColumn} invalido para tabela: " . $this->table);
+            throw new Exception("onDelete na ForeingKey {$foreignTable}.{$foreignColumn} invalido para tabela: " . $this->table);
         }
 
         $this->hasForeingKey = true;
-        $this->foreningTables[$foreingColumn] = $foreingTable;
-        $this->foreningColumns[$foreingColumn] = $column;
+        $this->foreningTables[$foreignColumn] = $foreignTable;
+        $this->foreningColumns[$foreignColumn] = $column;
         $this->foreningKeySql[] = " ALTER TABLE {$this->table} ADD CONSTRAINT 
-                                    " . $this->table . "_" . $column . "_" . $foreingTable . "_" . $foreingColumn . " 
-                                    FOREIGN KEY ({$column}) REFERENCES {$foreingTable} 
-                                    ({$foreingColumn}) ON DELETE {$onDelete};";
+                                    " . $this->table . "_" . $column . "_" . $foreignTable . "_" . $foreignColumn . " 
+                                    FOREIGN KEY ({$column}) REFERENCES {$foreignTable} 
+                                    ({$foreignColumn}) ON DELETE {$onDelete};";
 
         return $this;
     }
@@ -214,7 +214,7 @@ class TablePgsql implements Table
         }
     }
 
-    public function addForeingKeytoTable()
+    public function addForeignKeytoTable()
     {
         foreach ($this->foreningKeySql as $sql) {
             $this->pdo->exec($sql);
@@ -295,7 +295,9 @@ class TablePgsql implements Table
                 $changed = false;
 
                 if (
-                    !$inDb || strtolower(explode("(", $column->type)[0]) != $columnInformation["data_type"] ||
+                    !$inDb ||
+                    ($column->size != $columnInformation["character_maximum_length"] ||
+                     $column->size != $columnInformation["numeric_format"]) ||
                     ($columnInformation["is_nullable"] == "YES" && $column->null) ||
                     ($columnInformation["is_nullable"] == "NO" && !$column->null && !$column->primary) ||
                     (str_replace("'", "", explode("::", $columnInformation["column_default"] ?? "")[0]) != $column->defaultValue)
@@ -459,32 +461,37 @@ class TablePgsql implements Table
     //Pega as colunas da tabela e tranforma em Objeto
     private function getColumnsTable()
     {
-        $sql = $this->pdo->prepare("SELECT 
+        $sql = $this->pdo->prepare("SELECT
                         ic.table_catalog,
                         ic.table_name,
                         ic.column_name,
                         ic.data_type,
+                        ic.character_maximum_length,
+                        CASE 
+                            WHEN ic.data_type = 'numeric' THEN CONCAT(ic.numeric_precision, ',', ic.numeric_scale)
+                            ELSE NULL
+                        END AS numeric_format,
                         ic.is_nullable,
-                        ic.column_default, 
-                        tc.constraint_name, 
+                        ic.column_default,
+                        tc.constraint_name,
                         tc.table_name AS constraint_table_name,
                         tc.constraint_type,
                         tc.constraint_name,
-                        kcu.column_name AS key_column_name, 
+                        kcu.column_name AS key_column_name,
                         ccu.table_name AS foreign_table_name,
-                        ccu.column_name AS foreign_column_name 
-                    FROM 
+                        ccu.column_name AS foreign_column_name
+                    FROM
                         information_schema.columns AS ic
-                    LEFT JOIN 
+                    LEFT JOIN
                         information_schema.key_column_usage AS kcu
                         ON ic.table_name = kcu.table_name
                         AND ic.column_name = kcu.column_name
-                    LEFT JOIN 
-                        information_schema.table_constraints AS tc 
+                    LEFT JOIN
+                        information_schema.table_constraints AS tc
                         ON kcu.constraint_name = tc.constraint_name
-                    LEFT JOIN 
+                    LEFT JOIN
                         information_schema.constraint_column_usage AS ccu
-                        ON tc.constraint_name = ccu.constraint_name 
+                        ON tc.constraint_name = ccu.constraint_name
                     WHERE ic.table_catalog = :db AND ic.table_name = :table;");
 
         $sql->bindParam(':db', $this->dbname);
@@ -549,7 +556,8 @@ class TablePgsql implements Table
         return $rows;
     }
 
-    private function getForeignKeyName($column) {
+    private function getForeignKeyName($column)
+    {
         $sql = $this->pdo->prepare("
             SELECT conname 
             FROM pg_constraint 
@@ -562,22 +570,22 @@ class TablePgsql implements Table
             AND contype = 'f'
             LIMIT 1
         ");
-    
+
         $schema = 'public';
-    
+
         $sql->bindParam(':schema', $schema);
         $sql->bindParam(':table', $this->table);
         $sql->bindParam(':column', $column);
         $sql->execute();
-    
+
         $rows = [];
-    
+
         if ($sql->rowCount() > 0) {
             $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
         }
-    
+
         return $rows;
-    }    
+    }
 
     private function validateName($name)
     {

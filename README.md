@@ -187,7 +187,7 @@ class Estado extends Model {
                 ->addColumn((new Column("nome","VARCHAR",120))->isNotNull()->setComment("Nome do estado"))
                 ->addColumn((new Column("uf","VARCHAR",2))->isNotNull()->setComment("nome da Uf"))
                 ->addColumn((new Column("pais","INT"))->isNotNull()->setComment("id da pais do estado"))
-                ->addForeingKey(Pais::table,column:"pais")
+                ->addForeignKey(Pais::table,column:"pais")
                 ->addColumn((new Column("ibge","INT"))->isUnique()->setComment("id do IBJE do estado"))
                 ->addColumn((new Column("ddd","VARCHAR",50))->setComment("DDDs separado por , da Uf"));
     }

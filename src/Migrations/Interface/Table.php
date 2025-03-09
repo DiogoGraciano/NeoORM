@@ -20,9 +20,9 @@ interface Table
 
     public function hasForeignKey():bool;
 
-    public function addForeingKey(string $foreingTable,string $foreingColumn = "id",string $column = "id",string $onDelete = "RESTRICT");
+    public function addForeignKey(string $foreignTable,string $foreignColumn = "id",string $column = "id",string $onDelete = "RESTRICT");
 
-    public function addForeingKeytoTable();
+    public function addForeignKeytoTable();
 
     public function getForeignKeyTables():array;
 

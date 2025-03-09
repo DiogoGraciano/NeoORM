@@ -64,13 +64,13 @@ class Table implements TableInterface
         return $this->table->getForeignKeyTables();
     }
 
-    public function addForeingKey(string $foreingTable,string $column = "id",string $foreingColumn = "id",string $onDelete = "RESTRICT")
+    public function addForeignKey(string $foreignTable,string $column = "id",string $foreignColumn = "id",string $onDelete = "RESTRICT")
     {
-        return $this->table->addForeingKey($foreingTable,$column,$foreingColumn,$onDelete);
+        return $this->table->addForeignKey($foreignTable,$column,$foreignColumn,$onDelete);
     }
 
-    public function addForeingKeytoTable(){
-        return $this->table->addForeingKeytoTable();
+    public function addForeignKeytoTable(){
+        return $this->table->addForeignKeytoTable();
     }
 
     public function getTable():string
