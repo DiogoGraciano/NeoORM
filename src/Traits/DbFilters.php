@@ -3,6 +3,7 @@
 namespace Diogodg\Neoorm\Traits;
 
 use Diogodg\Neoorm\Enums\OperatorCondition;
+use Diogodg\Neoorm\Enums\OrderCondition;
 use Exception;
 
 /**
@@ -63,15 +64,16 @@ trait DbFilters
     /**
      * Adiciona uma ordenação (ORDER BY).
      */
-    protected function addOrder(string $column, string $order = "DESC"): static
+    protected function addOrder(string $column, OrderCondition $order = OrderCondition::DESC): static
     {
         if ($this->hasOrder) {
-            $this->order[] = "," . $column . " " . $order;
+            $this->order[$order->name] .= "," . $column;
         } else {
-            $this->order[] = " ORDER BY " . $column . " " . $order;
+            $this->order[$order->name] = " ORDER BY " . $column;
         }
 
         $this->hasOrder = true;
+
         return $this;
     }
 
