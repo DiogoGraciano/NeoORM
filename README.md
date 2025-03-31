@@ -1,167 +1,165 @@
 # NeoORM
 
-NeoORM é uma biblioteca PHP para mapeamento de bancos de dados que permite criar e atualizar tabelas, além de inserir, atualizar, excluir e selecionar registros em uma ou mais tabelas.
+NeoORM is a PHP library for database mapping that allows you to create and update tables, as well as insert, update, delete, and select records from one or more tables.
 
-## Instalação
+## Installation
 ```bash
 composer require diogodg/neoorm
 ```
 
-criar um arquivo .env na raiz de seu projeto com as seguintes variaveis
+Create a .env file in the root of your project with the following variables:
 
 ```env
-# Configuração do banco de dados
+# Database configuration
 DRIVER=mysql
 DBHOST=localhost
 DBPORT=3306
-DBNAME=bd
+DBNAME=db
 DBCHARSET=utf8mb4
 DBUSER=root
 DBPASSWORD=
 
-# Configuração do caminho de seus Models
+# Model path configuration
 PATH_MODEL=./app/models
 MODEL_NAMESPACE=app\models
 ```
 
-## Exemplos
+## Examples
 
-### Selecionar Registros
+### Selecting Records
 
-#### Selecionar por ID
+#### Select by ID
 ```php
-// Retorna um objeto com todas as colunas da tabela com base no $id informado
-$result = (new Agendamento)->get($id);
+// Returns an object with all table columns based on the provided $id
+$result = (new Appointment)->get($id);
 ```
 
-#### Selecionar por Nome
+#### Select by Name
 ```php
-// Retorna um objeto com todas as colunas da tabela com base no $nome informado
-$result = (new Agendamento)->get($nome, "nome");
+// Returns an object with all table columns based on the provided $name
+$result = (new Appointment)->get($name, "name");
 ```
 
-#### Selecionar Todos os Registros
+#### Select All Records
 ```php
-// Retorna um array de objetos com todas as colunas e registros da tabela
-$result = (new Agendamento)->getAll();
+// Returns an array of objects with all columns and records from the table
+$result = (new Appointment)->getAll();
 ```
 
-#### Selecionar com Filtros
+#### Select with Filters
 ```php
-// Retorna um array de objetos com todas as colunas da tabela com base nos filtros informados
-$db = new Agendamento;
-$results = $db->addFilter("dt_ini", ">=", $dt_inicio)
-              ->addFilter("dt_fim", "<=", $dt_fim)
-              ->addFilter("id_agenda", "=", intval($id_agenda))
+// Returns an array of objects with all table columns based on the provided filters
+$db = new Appointment;
+$results = $db->addFilter("start_date", ">=", $start_date)
+              ->addFilter("end_date", "<=", $end_date)
+              ->addFilter("schedule_id", "=", intval($schedule_id))
               ->addFilter("status", "!=", $status)
               ->selectAll();
 ```
 
-#### Selecionar com Joins e Filtros
+#### Select with Joins and Filters
 ```php
-// Retorna um array de objetos com as colunas informadas, com base nos filtros e joins adicionados
-$db = new Agendamento;
-$result = $db->addJoin("LEFT", "usuario", "usuario.id", "agendamento.id_usuario")
-             ->addJoin("INNER", "agenda", "agenda.id", "agendamento.id_agenda")
-             ->addJoin("LEFT", "cliente", "cliente.id", "agendamento.id_cliente")
-             ->addJoin("INNER", "funcionario", "funcionario.id", "agendamento.id_funcionario")
-             ->addFilter("agenda.id_empresa", "=", $id_empresa)
-             ->selectColumns("agendamento.id", "usuario.cpf_cnpj", "cliente.nome as cli_nome", "usuario.nome as usu_nome", "usuario.email", "usuario.telefone", "agenda.nome as age_nome", "funcionario.nome as fun_nome", "dt_ini", "dt_fim");
+// Returns an array of objects with the specified columns, based on the added filters and joins
+$db = new Appointment;
+$result = $db->addJoin("LEFT", "user", "user.id", "appointment.user_id")
+             ->addJoin("INNER", "schedule", "schedule.id", "appointment.schedule_id")
+             ->addJoin("LEFT", "client", "client.id", "appointment.client_id")
+             ->addJoin("INNER", "employee", "employee.id", "appointment.employee_id")
+             ->addFilter("schedule.company_id", "=", $company_id)
+             ->selectColumns("appointment.id", "user.tax_id", "client.name as client_name", "user.name as user_name", "user.email", "user.phone", "schedule.name as schedule_name", "employee.name as employee_name", "start_date", "end_date");
 ```
 
-#### Selecionar com Filtros e Limite
+#### Select with Filters and Limit
 ```php
-// Retorna um array de objetos com as colunas informadas que correspondem aos valores informados, com base nos filtros e limite especificados
-$db = new Cidade;
-$result = $db->addFilter("nome", "LIKE", "%" . $nome . "%")
+// Returns an array of objects with the specified columns that match the provided values, based on the specified filters and limit
+$db = new City;
+$result = $db->addFilter("name", "LIKE", "%" . $name . "%")
              ->addLimit(1)
-             ->selectByValues(["uf"], [$id_uf], true);
+             ->selectByValues(["state"], [$state_id], true);
 ```
 
-### Inserir/Atualizar Registros
+### Insert/Update Records
 
 ```php
+$values = new Employee;
 
-$values = new Funcionario;
-
-// Se $values->id for null, vazio, ou 0, tentará realizar um comando INSERT. Caso contrário, tentará um UPDATE.
-$values->id = null; // ou "" ou 0
-$values->id_usuario = $id_usuario;
-$values->nome = $nome;
-$values->cpf_cnpj = $cpf_cnpj;
+// If $values->id is null, empty, or 0, it will attempt an INSERT command. Otherwise, it will attempt an UPDATE.
+$values->id = null; // or "" or 0
+$values->user_id = $user_id;
+$values->name = $name;
+$values->tax_id = $tax_id;
 $values->email = $email;
-$values->telefone = $telefone;
-$values->hora_ini = $hora_ini;
-$values->hora_fim = $hora_fim;
-$values->hora_almoco_ini = $hora_almoco_ini;
-$values->hora_almoco_fim = $hora_almoco_fim;
-$values->dias = $dias;
+$values->phone = $phone;
+$values->start_time = $start_time;
+$values->end_time = $end_time;
+$values->lunch_start = $lunch_start;
+$values->lunch_end = $lunch_end;
+$values->days = $days;
 
-// Retorna false ou o ID do registro
-$retorno = $values->store();
+// Returns false or the record ID
+$result = $values->store();
 ```
 
-### Excluir Registros
+### Delete Records
 
-#### Excluir por Filtro
+#### Delete by Filter
 ```php
-$db = new Funcionario;
+$db = new Employee;
 
-// Retorna true ou false
-$retorno = $db->addFilter("nome", "=", "Diogo")->deleteByFilter();
+// Returns true or false
+$result = $db->addFilter("name", "=", "John")->deleteByFilter();
 ```
 
-#### Excluir por ID
+#### Delete by ID
 ```php
 $id = 1;
-$db = new funcionario;
+$db = new Employee;
 
-// Retorna true ou false
-$retorno = $db->delete($id);
+// Returns true or false
+$result = $db->delete($id);
 ```
 
-### Usando Transações
+### Using Transactions
 
 ```php
-    try{   
-        connection::beginTransaction();
+try {   
+    connection::beginTransaction();
 
-        if ($agenda->set()){ 
+    if ($schedule->set()){ 
+        $scheduleUser = new ScheduleUser;
+        $scheduleUser->user_id = $user->id;
+        $scheduleUser->schedule_id = $schedule->id;
+        $scheduleUser->set();
 
-            $agendaUsuario = new agendaUsuario;
-            $agendaUsuario->id_usuario = $user->id;
-            $agendaUsuario->id_agenda = $agenda->id;
-            $agendaUsuario->set();
-
-            if($agenda->id_funcionario){
-                $agendaFuncionario = new agendaFuncionario;
-                $agendaFuncionario->id_funcionario = $agenda->id_funcionario;
-                $agendaFuncionario->id_agenda = $agenda->id;
-                $agendaFuncionario->set();
-            }
-            connection::commit();
+        if($schedule->employee_id){
+            $scheduleEmployee = new ScheduleEmployee;
+            $scheduleEmployee->employee_id = $schedule->employee_id;
+            $scheduleEmployee->schedule_id = $schedule->id;
+            $scheduleEmployee->set();
         }
-    }catch (\exception $e){
-        connection::rollBack();
+        connection::commit();
     }
+} catch (\exception $e){
+    connection::rollBack();
+}
 ```
 
-### Outros Exemplos
+### Other Examples
 
-#### Utilizando a Classe DB Diretamente
+#### Using the DB Class Directly
 ```php
 $id = 1;
-$db = new db("tb_funcionario");
+$db = new db("tb_employee");
 
-// Retorna true ou false
-$retorno = $db->delete($id);
+// Returns true or false
+$result = $db->delete($id);
 ```
 
-## Criação/Modificação de Banco de Dados
+## Database Creation/Modification
 
-### Criar uma Tabela
+### Creating a Table
 
-Dentro da pasta app/models deverá ser criada uma classe que irá representar sua tabela no banco de dados como o exemplo abaixo:
+Inside the app/models folder, you should create a class that will represent your table in the database, as shown in the example below:
 
 ```php
 <?php
@@ -171,73 +169,70 @@ use Diogodg\Neoorm\Abstract\Model;
 use Diogodg\Neoorm\Migrations\Table;
 use Diogodg\Neoorm\Migrations\Column;
 
-class Estado extends Model {
-    //parametro obrigatorio que irá definir o nome da tabela no banco
-    public const table = "estado";
+class State extends Model {
+    // Required parameter that will define the table name in the database
+    public const table = "state";
 
-    //obrigatorio ser dessa forma
+    // Must be in this format
     public function __construct() {
         parent::__construct(self::table);
     }
 
-    //metodo responsavel por criar a tabela
+    // Method responsible for creating the table
     public static function table(){
-        return (new Table(self::table,comment:"Tabela de estados"))
-                ->addColumn((new Column("id","INT"))->isPrimary()->setComment("ID da cidade"))
-                ->addColumn((new Column("nome","VARCHAR",120))->isNotNull()->setComment("Nome do estado"))
-                ->addColumn((new Column("uf","VARCHAR",2))->isNotNull()->setComment("nome da Uf"))
-                ->addColumn((new Column("pais","INT"))->isNotNull()->setComment("id da pais do estado"))
-                ->addForeignKey(Pais::table,column:"pais")
-                ->addColumn((new Column("ibge","INT"))->isUnique()->setComment("id do IBJE do estado"))
-                ->addColumn((new Column("ddd","VARCHAR",50))->setComment("DDDs separado por , da Uf"));
+        return (new Table(self::table, comment:"States table"))
+                ->addColumn((new Column("id", "INT"))->isPrimary()->setComment("State ID"))
+                ->addColumn((new Column("name", "VARCHAR", 120))->isNotNull()->setComment("State name"))
+                ->addColumn((new Column("abbreviation", "VARCHAR", 2))->isNotNull()->setComment("State abbreviation"))
+                ->addColumn((new Column("country", "INT"))->isNotNull()->setComment("Country ID of the state"))
+                ->addForeignKey(Country::table, column:"country")
+                ->addColumn((new Column("ibge", "INT"))->isUnique()->setComment("IBGE ID of the state"))
+                ->addColumn((new Column("area_code", "VARCHAR", 50))->setComment("Area codes separated by comma"));
     }
 
-    //metodo responsavel por inserir dados iniciais na tabela 
+    // Method responsible for inserting initial data into the table
     public static function seed(){
         $object = new self;
         if(!$object->addLimit(1)->selectColumns("id")){
-            $object->nome = "Acre";
-            $object->uf = "AC";
-            $object->pais = 1;
+            $object->name = "Acre";
+            $object->abbreviation = "AC";
+            $object->country = 1;
             $object->ibge = 12;
-            $object->ddd = "68";
+            $object->area_code = "68";
             $object->store();
 
-            $object->nome = "Alagoas";
-            $object->uf = "AL";
-            $object->pais = 1;
+            $object->name = "Alagoas";
+            $object->abbreviation = "AL";
+            $object->country = 1;
             $object->ibge = 27;
-            $object->ddd = "82";
+            $object->area_code = "82";
             $object->store();
 
-            $object->nome = "Amapá";
-            $object->uf = "AP";
-            $object->pais = 1;
+            $object->name = "Amapá";
+            $object->abbreviation = "AP";
+            $object->country = 1;
             $object->ibge = 16;
-            $object->ddd = "96";
+            $object->area_code = "96";
             $object->store();
 
-            $object->nome = "Amazonas";
-            $object->uf = "AM";
-            $object->pais = 1;
+            $object->name = "Amazonas";
+            $object->abbreviation = "AM";
+            $object->country = 1;
             $object->ibge = 13;
-            $object->ddd = "92,97";
+            $object->area_code = "92,97";
             $object->store();
-      }
-  }
+        }
+    }
+}
 ```
 
-Após criado todas as classes
-
-basta chamar a seguinte classe como no exemplo abaixo
+After creating all the classes, simply call the following class as shown in the example below:
 
 ```php
-
 <?php
 
 use Diogodg\Neoorm\Migrations\Migrate;
 
-//caso o parametro recreate seja verdadeiro irá ser removido todas as tabelas e depois recriadas novamente
-(new Migrate)->execute($recrete = false);
-
+// If the recreate parameter is true, all tables will be removed and then recreated
+(new Migrate)->execute($recreate = false);
 ```
