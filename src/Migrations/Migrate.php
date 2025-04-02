@@ -107,9 +107,28 @@ class Migrate
     */
    private function isValidModelClass(string $className): bool
    {
-      return class_exists($className) &&
-         method_exists($className, "table") &&
-         is_subclass_of($className, "Diogodg\\Neoorm\\Abstract\\Model");
+      try {
+         $reflection = new \ReflectionClass($className);
+
+         $baseModelClass = "Diogodg\\Neoorm\\Abstract\\Model";
+         if (!$reflection->isSubclassOf($baseModelClass)) {
+            return false;
+         }
+
+         if (!$reflection->hasMethod('table')) {
+            return false;
+         }
+
+         $tableMethod = $reflection->getMethod('table');
+         if (!$tableMethod->isStatic()) {
+            return false;
+         }
+         return true;
+      } catch (\ReflectionException $e) {
+         return false;
+      } catch (\Throwable $e) {
+         return false;
+      }
    }
 
    /**
