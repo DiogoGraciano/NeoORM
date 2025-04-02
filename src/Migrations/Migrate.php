@@ -3,6 +3,7 @@
 namespace Diogodg\Neoorm\Migrations;
 
 use Diogodg\Neoorm\Connection;
+use Exception;
 
 class Migrate
 {
@@ -27,6 +28,11 @@ class Migrate
          $allCreatedTableInstances = [];
 
          foreach ($tableFiles as $tableFile) {
+
+            if ($tableFile === '.' || $tableFile === '..' || !str_ends_with(strtolower($tableFile), '.php')) {
+               continue;
+            }
+
             $className = $this->getClassNameFromFile($tableFile);
 
             if ($this->isValidModelClass($className)) {
@@ -61,15 +67,8 @@ class Migrate
 
    public function recreateDatabase()
    {
-      if (!$_ENV) {
-         if (\file_exists('.env'))
-            $_ENV = parse_ini_file('.env');
-         elseif (\file_exists('../.env'))
-            $_ENV = parse_ini_file('../.env');
-         elseif (\file_exists('../../.env'))
-            $_ENV = parse_ini_file('../../.env');
-         elseif (\file_exists('../../../.env'))
-            $_ENV = parse_ini_file('../../../.env');
+      if (empty($_ENV)) {
+         throw new Exception('$_ENV should be set');
       }
 
       if ($_ENV["DRIVER"] == "mysql") {
@@ -90,12 +89,11 @@ class Migrate
       $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
       try {
-         $sql = $pdo->prepare("DROP DATABASE IF EXISTS ".$_ENV['DBNAME']);
+         $sql = $pdo->prepare("DROP DATABASE IF EXISTS " . $_ENV['DBNAME']);
          $sql->execute();
 
-         $sql = $pdo->prepare("CREATE DATABASE ".$_ENV['DBNAME']);
+         $sql = $pdo->prepare("CREATE DATABASE " . $_ENV['DBNAME']);
          $sql->execute();
-
       } catch (\PDOException $e) {
          echo "Erro ao criar banco de dados: " . $e->getMessage();
       }
@@ -123,6 +121,6 @@ class Migrate
     */
    private function getClassNameFromFile(string $tableFile): string
    {
-      return $_ENV["MODEL_NAMESPACE"] . "\\" . str_replace(".php", "", $tableFile);
+      return $_ENV["MODEL_NAMESPACE"] . str_replace(".php", "", $tableFile);
    }
 }
