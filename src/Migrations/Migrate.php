@@ -111,7 +111,7 @@ class Migrate
    {
       return class_exists($className) &&
          method_exists($className, "table") &&
-         is_subclass_of($className, "diogodg\\neoorm\\abstract\\model");
+         is_subclass_of($className, "Diogodg\\Neoorm\\Abstract\\Model");
    }
 
    /**
