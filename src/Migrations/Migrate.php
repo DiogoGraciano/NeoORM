@@ -14,7 +14,7 @@ class Migrate
     * @return void
     * @throws \Exception
     */
-   public function execute(bool $recreate): void
+   public function execute(bool $recreate):void
    {
       try {
 
@@ -99,12 +99,6 @@ class Migrate
       }
    }
 
-   /**
-    * Verifica se uma classe é válida como modelo
-    *
-    * @param string $className
-    * @return bool
-    */
    private function isValidModelClass(string $className): bool
    {
       try {
@@ -124,22 +118,13 @@ class Migrate
             return false;
          }
          return true;
-      } catch (\ReflectionException $e) {
+      } catch (\ReflectionException | \Throwable $e) {
          return false;
-      } catch (\Throwable $e) {
-         return false;
-      }
+      } 
    }
 
-   /**
-    * Obtém o nome completo da classe a partir do arquivo
-    *
-    * @param array $env
-    * @param string $tableFile
-    * @return string
-    */
    private function getClassNameFromFile(string $tableFile): string
    {
-      return $_ENV["MODEL_NAMESPACE"] . str_replace(".php", "", $tableFile);
+      return $_ENV["MODEL_NAMESPACE"]."\\".str_replace(".php", "", $tableFile);
    }
 }

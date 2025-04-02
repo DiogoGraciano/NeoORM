@@ -9,32 +9,25 @@ class GeneretePhpDoc
     public function execute()
     {
         $modelPath = $_ENV["PATH_MODEL"];
-        $namespace = $_ENV["MODEL_NAMESPACE"];
 
         if (!is_dir($modelPath)) {
-            throw new \RuntimeException("Diretório de modelos não encontrado: $modelPath");
+            throw new \RuntimeException("Model dir not found: $modelPath");
         }
 
         $tableFiles = scandir($modelPath);
 
         foreach ($tableFiles as $tableFile) {
+    
             if (!str_ends_with($tableFile, '.php')) {
-                continue; // Ignora arquivos que não são PHP
-            }
-
-            $className = $this->getClassNameFromFile($tableFile, $namespace);
-            $filePath  = $modelPath . DIRECTORY_SEPARATOR . $tableFile;
-
-            if (!class_exists($className)) {
-                require_once $filePath; // Garante que a classe seja carregada
-            }
-
-            if (!class_exists($className)) {
-                echo "Classe não encontrada: $className\n";
                 continue;
             }
 
+            $className = $this->getClassNameFromFile($tableFile);
+
+            $filePath  = $modelPath . DIRECTORY_SEPARATOR . $tableFile;
+
             try {
+
                 $reflectionClass = new \ReflectionClass($className);
 
                 if (!$reflectionClass->isSubclassOf(Model::class)) {
@@ -59,9 +52,9 @@ class GeneretePhpDoc
                 foreach ($tableInstance->getColumns() as $column) {
                     $columnName = $column->name;
                     $columnType = match (preg_replace('/\([^)]*\)/', '', strtoupper($column->type))) {
-                        'INT','INTEGER' => 'int',
-                        'VARCHAR','TEXT' => 'string',
-                        'DECIMAL','FLOAT','DOUBLE' => 'float',
+                        'INT', 'INTEGER' => 'int',
+                        'VARCHAR', 'TEXT' => 'string',
+                        'DECIMAL', 'FLOAT', 'DOUBLE' => 'float',
                         default => 'mixed'
                     };
                     $phpDoc .= " * @property {$columnType} \${$columnName} {$column->comment}\n";
@@ -80,9 +73,9 @@ class GeneretePhpDoc
 
                 // 1) Remove o bloco de comentários PHPDoc antigo, **sem** remover a quebra de linha seguinte.
                 $codigo = preg_replace(
-                    '/^\/\*\*[\s\S]+?\*\/\s*/m', 
-                    '', 
-                    $codigo, 
+                    '/^\/\*\*[\s\S]+?\*\/\s*/m',
+                    '',
+                    $codigo,
                     1
                 );
 
@@ -90,7 +83,7 @@ class GeneretePhpDoc
                 //    Aqui inserimos uma quebra de linha entre " */" e "class".
                 $codigo = preg_replace(
                     '/(final\s+class\s+\w+|abstract\s+class\s+\w+|class\s+\w+)/',
-                    $phpDoc."\n$1",
+                    $phpDoc . "\n$1",
                     $codigo,
                     1
                 );
@@ -99,22 +92,14 @@ class GeneretePhpDoc
                 file_put_contents($filePath, $codigo);
 
                 echo "PHPDoc atualizado para: $className\n";
-
             } catch (\Exception $e) {
                 echo "Erro ao processar $className: " . $e->getMessage() . "\n";
             }
         }
     }
 
-    /**
-     * Obtém o nome completo da classe a partir do arquivo
-     *
-     * @param string $tableFile
-     * @param string $namespace
-     * @return string
-     */
-    private function getClassNameFromFile(string $tableFile, string $namespace): string
+    private function getClassNameFromFile(string $tableFile): string
     {
-        return $namespace . "\\" . str_replace(".php", "", $tableFile);
+        return $_ENV["MODEL_NAMESPACE"]."\\".str_replace(".php", "", $tableFile);
     }
 }
