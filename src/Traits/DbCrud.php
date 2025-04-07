@@ -15,64 +15,70 @@ trait DbCrud
     protected function store(): bool
     {
         try {
-            // Mapear colunas da tabela
+            // Mapeia as colunas e valida cada uma delas
+            $columnsDb = [];
+            $safeColumns = [];
             foreach ($this->columns as $col) {
-                $columnsDb[$col] = true;
+                $safeCol = $this->validateIdentifier($col);
+                $columnsDb[$safeCol] = true;
+                $safeColumns[] = $safeCol;
             }
 
             if ($this->object && !isset($this->object[0])) {
+                // Filtra apenas as chaves que estão definidas na tabela
                 $objectFilter = array_intersect_key($this->object, $columnsDb);
 
-                // Verifica se o campo de PK (primeira coluna do array $this->columns) está setado
+                // Verifica se o campo de PK (primeira coluna) está setado
+                $primaryKey = $this->validateIdentifier($this->columns[0]);
                 if (
-                    !isset($objectFilter[$this->columns[0]]) ||
-                    empty($objectFilter[$this->columns[0]])
+                    !isset($objectFilter[$primaryKey]) ||
+                    empty($objectFilter[$primaryKey])
                 ) {
                     // Se a tabela for auto-increment, removemos a PK do INSERT
                     if ($this->class::table()->getAutoIncrement()) {
-                        unset($objectFilter[$this->columns[0]]);
+                        unset($objectFilter[$primaryKey]);
                     } else {
                         $nextId = $this->getlastIdBd() + 1;
-                        $this->object[$this->columns[0]] = $objectFilter[$this->columns[0]] = $nextId;
+                        $this->object[$primaryKey] = $objectFilter[$primaryKey] = $nextId;
                     }
 
                     // Montagem do INSERT
                     $sql_instruction = "INSERT INTO {$this->table} (";
-                    $keysBD   = implode(",", array_keys($objectFilter));
+                    $keysBD   = implode(",", array_map([$this, 'validateIdentifier'], array_keys($objectFilter)));
                     $valuesBD = "";
 
-                    foreach ($objectFilter as $key => $data) {
+                    foreach ($objectFilter as $data) {
                         $valuesBD .= "{$this->setBind($data)},";
                     }
-                    $keysBD   = rtrim($keysBD, ",");
                     $valuesBD = rtrim($valuesBD, ",");
 
                     $sql_instruction .= $keysBD . ") VALUES (" . $valuesBD . ");";
                 } else {
-                    // UPDATE
+                    // Montagem do UPDATE
                     $sql_instruction = "UPDATE {$this->table} SET ";
                     foreach ($objectFilter as $key => $data) {
-                        if ($key === $this->columns[0]) {
-                            continue; // não atualiza a PK
+                        // Não atualiza a chave primária
+                        if ($this->validateIdentifier($key) === $primaryKey) {
+                            continue;
                         }
-                        $sql_instruction .= "{$key} = {$this->setBind($data)},";
+                        $sql_instruction .= "{$this->validateIdentifier($key)} = {$this->setBind($data)},";
                     }
                     $sql_instruction = rtrim($sql_instruction, ",") . " WHERE ";
 
-                    // Se existem filtros, usamos no WHERE
+                    // Se existirem filtros, usa-os no WHERE
                     if ($this->filters) {
                         $sql_instruction .= implode(' ', array_map(function ($filter, $i) {
                             return $i === 0 ? substr($filter, 4) : $filter;
                         }, $this->filters, array_keys($this->filters)));
                     } else {
-                        $sql_instruction .= "{$this->columns[0]} = {$this->setBind($objectFilter[$this->columns[0]])}";
+                        $sql_instruction .= "{$primaryKey} = {$this->setBind($objectFilter[$primaryKey])}";
                     }
                 }
 
                 $this->executeSql($sql_instruction);
 
                 if ($this->class::table()->getAutoIncrement()) {
-                    $this->object[$this->columns[0]] = $this->pdo->lastInsertId();
+                    $this->object[$primaryKey] = $this->pdo->lastInsertId();
                 }
 
                 return true;
@@ -89,21 +95,22 @@ trait DbCrud
     protected function storeMutiPrimary(): bool
     {
         try {
+            // Valida a tabela e as colunas
+            $columnsDb = [];
             foreach ($this->columns as $col) {
-                $columnsDb[$col] = true;
+                $columnsDb[$this->validateIdentifier($col)] = true;
             }
 
             if ($this->object) {
                 $objectFilter = array_intersect_key($this->object, $columnsDb);
 
                 $sql_instruction = "INSERT INTO {$this->table} (";
-                $keysBD   = implode(",", array_keys($objectFilter));
+                $keysBD   = implode(",", array_map([$this, 'validateIdentifier'], array_keys($objectFilter)));
                 $valuesBD = "";
 
                 foreach ($objectFilter as $data) {
                     $valuesBD .= "{$this->setBind($data)},";
                 }
-                $keysBD   = rtrim($keysBD, ",");
                 $valuesBD = rtrim($valuesBD, ",");
 
                 $sql_instruction .= $keysBD . ") VALUES (" . $valuesBD . ");";
@@ -125,7 +132,7 @@ trait DbCrud
     {
         try {
             if ($id) {
-                $sql = "DELETE FROM {$this->table} WHERE {$this->columns[0]} = {$this->setBind($id)}";
+                $sql = "DELETE FROM {$this->table} WHERE {$this->validateIdentifier($this->columns[0])} = {$this->setBind($id)}";
                 $this->executeSql($sql);
                 return true;
             }

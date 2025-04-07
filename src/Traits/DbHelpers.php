@@ -26,6 +26,18 @@ trait DbHelpers{
         $this->hasOrder          = false;
     }
 
+
+    /**
+     * Valida se o identificador é seguro (apenas letras, números, underscore e ponto são permitidos).
+     */
+    private function validateIdentifier(string $identifier): string
+    {
+        if (!preg_match('/^[a-zA-Z0-9_.]+$/', $identifier)) {
+            throw new Exception("Identificador inválido: " . $identifier);
+        }
+        return $identifier;
+    }
+
     /**
      * Retorna as colunas da tabela.
      */

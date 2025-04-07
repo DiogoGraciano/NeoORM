@@ -27,7 +27,7 @@ class Db
         // Obtemos a instância de PDO de outra classe
         $this->pdo = Connection::getConnection();
 
-        $this->table = $table;
+        $this->table = $this->validateIdentifier($table);
         $this->class = $class;
 
         $this->getColumnTable();

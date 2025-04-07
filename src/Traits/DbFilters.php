@@ -1,5 +1,4 @@
 <?php
-
 namespace Diogodg\Neoorm\Traits;
 
 use Diogodg\Neoorm\Enums\OperatorCondition;
@@ -31,11 +30,14 @@ trait DbFilters
         bool $startGroupFilter = false,
         bool $endGroupFilter = false
     ): static {
+        // Valida o nome do campo
+        $field = $this->validateIdentifier($field);
+
         $start  = $startGroupFilter ? "(" : "";
         $end    = $endGroupFilter   ? ")" : "";
 
         // Caso seja IN, o $value deve ser array
-        if (str_contains(strtolower($logicalOperator), "in")) {
+        if (stripos($logicalOperator, "in") !== false) {
             if (!is_array($value)) {
                 throw new Exception("Para operadores IN, o valor precisa ser um array.");
             }
@@ -48,7 +50,7 @@ trait DbFilters
             $filter = " " . $operatorCondition->name . " " . $start . $field .
                       " " . $logicalOperator . " " . $inValue . $end;
             $this->filters[] = $filter;
-        }elseif (str_contains(strtolower($logicalOperator), "is")){
+        } elseif (stripos($logicalOperator, "is") !== false) {
             $filter = " " . $operatorCondition->name . " " . $start . $field .
                       " " . $logicalOperator . " {$value} " . $end;
             $this->filters[] = $filter;
@@ -66,6 +68,9 @@ trait DbFilters
      */
     protected function addOrder(string $column, OrderCondition $order = OrderCondition::DESC): static
     {
+        // Valida o nome da coluna
+        $column = $this->validateIdentifier($column);
+
         if ($this->hasOrder) {
             $this->order[$order->name] .= "," . $column;
         } else {
@@ -105,12 +110,17 @@ trait DbFilters
      */
     protected function addGroup(...$columns): static
     {
-        $this->group[] = " GROUP BY " . implode(",", $columns);
+        // Valida cada coluna
+        $validatedColumns = array_map(function($col) {
+            return $this->validateIdentifier($col);
+        }, $columns);
+
+        $this->group[] = " GROUP BY " . implode(",", $validatedColumns);
         return $this;
     }
 
     /**
-     * Adiciona um filtro WHERE.
+     * Adiciona um filtro HAVING.
      */
     protected function addHaving(
         string $field,
@@ -120,11 +130,14 @@ trait DbFilters
         bool $startGroupFilter = false,
         bool $endGroupFilter = false
     ): static {
+        // Valida o nome do campo
+        $field = $this->validateIdentifier($field);
+
         $start  = $startGroupFilter ? "(" : "";
         $end    = $endGroupFilter   ? ")" : "";
 
         // Caso seja IN, o $value deve ser array
-        if (str_contains(strtolower($logicalOperator), "in")) {
+        if (stripos($logicalOperator, "in") !== false) {
             if (!is_array($value)) {
                 throw new Exception("Para operadores IN, o valor precisa ser um array.");
             }
@@ -156,6 +169,11 @@ trait DbFilters
         string $typeJoin = "INNER",
         string $logicalOperator = '='
     ): static {
+        // Valida os identificadores
+        $table         = $this->validateIdentifier($table);
+        $columnTable   = $this->validateIdentifier($columnTable);
+        $columnRelation = $this->validateIdentifier($columnRelation);
+
         $typeJoin = strtoupper(trim($typeJoin));
         $valid = ["LEFT", "RIGHT", "INNER", "OUTER", "FULL OUTER", "LEFT OUTER", "RIGHT OUTER"];
 
