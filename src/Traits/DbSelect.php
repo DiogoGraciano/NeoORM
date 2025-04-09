@@ -52,7 +52,15 @@ trait DbSelect
      */
     protected function selectColumns(...$columns): array
     {
-        $sql = "SELECT " . implode(",", $columns) . " FROM " . $this->table;
+        $validatedColumns = array_map(function($col) {
+            if(is_array($col) && count($col) == 2){
+                return implode(" as ",$col);
+            }
+
+            return $this->validateIdentifier($col);
+        }, $columns);
+
+        $sql = "SELECT " . implode(",", $validatedColumns) . " FROM " . $this->table;
         $sql .= implode('', $this->joins);
 
         if ($this->filters) {

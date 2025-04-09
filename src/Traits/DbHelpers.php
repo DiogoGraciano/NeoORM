@@ -2,6 +2,7 @@
 
 namespace Diogodg\Neoorm\Traits;
 
+use Diogodg\Neoorm\Definitions\Raw;
 use Exception;
 use PDO;
 use PDOStatement;
@@ -30,8 +31,12 @@ trait DbHelpers{
     /**
      * Valida se o identificador é seguro (apenas letras, números, underscore e ponto são permitidos).
      */
-    private function validateIdentifier(string $identifier): string
+    private function validateIdentifier(Raw|string $identifier): string
     {
+        if ($identifier instanceof Raw) {
+            return $identifier->getSql();
+        }
+
         if (!preg_match('/^[a-zA-Z0-9_.]+$/', $identifier)) {
             throw new Exception("Identificador inválido: " . $identifier);
         }

@@ -1,6 +1,7 @@
 <?php
 namespace Diogodg\Neoorm\Traits;
 
+use Diogodg\Neoorm\Definitions\Raw;
 use Diogodg\Neoorm\Enums\OperatorCondition;
 use Diogodg\Neoorm\Enums\OrderCondition;
 use Exception;
@@ -23,7 +24,7 @@ trait DbFilters
      * Adiciona um filtro WHERE.
      */
     protected function addFilter(
-        string $field,
+        Raw|string $field,
         string $logicalOperator,
         mixed $value,
         OperatorCondition $operatorCondition = OperatorCondition::AND,
@@ -66,7 +67,7 @@ trait DbFilters
     /**
      * Adiciona uma ordenação (ORDER BY).
      */
-    protected function addOrder(string $column, OrderCondition $order = OrderCondition::DESC): static
+    protected function addOrder(Raw|string $column, OrderCondition $order = OrderCondition::DESC): static
     {
         // Valida o nome da coluna
         $column = $this->validateIdentifier($column);
@@ -123,7 +124,7 @@ trait DbFilters
      * Adiciona um filtro HAVING.
      */
     protected function addHaving(
-        string $field,
+        Raw|string $field,
         string $logicalOperator,
         mixed $value,
         OperatorCondition $operatorCondition = OperatorCondition::AND,
@@ -163,9 +164,9 @@ trait DbFilters
      * Adiciona um JOIN (INNER, LEFT, RIGHT etc).
      */
     protected function addJoin(
-        string $table,
-        string $columnTable,
-        string $columnRelation,
+        Raw|string $table,
+        Raw|string $columnTable,
+        Raw|string $columnRelation,
         string $typeJoin = "INNER",
         string $logicalOperator = '='
     ): static {
