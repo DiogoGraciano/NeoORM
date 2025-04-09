@@ -68,7 +68,7 @@ $result = $db->addJoin("LEFT", "user", "user.id", "appointment.user_id")
              ->addJoin("LEFT", "client", "client.id", "appointment.client_id")
              ->addJoin("INNER", "employee", "employee.id", "appointment.employee_id")
              ->addFilter("schedule.company_id", "=", $company_id)
-             ->selectColumns("appointment.id", "user.tax_id", ["client.name","client_name"],new Raw("user.name as user_name"), "user.email", "user.phone",["schedule.name","schedule_name"], "employee.name as employee_name", "start_date", "end_date");
+             ->selectColumns("appointment.id", "user.tax_id", ["client.name","client_name"],new Raw("user.name as user_name"), "user.email", "user.phone",["schedule.name","schedule_name"], ["employee.name","employee_name"], "start_date", "end_date");
 ```
 
 #### Select with Filters and Limit
