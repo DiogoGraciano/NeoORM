@@ -77,7 +77,7 @@ $result = $db->addJoin("LEFT", "user", "user.id", "appointment.user_id")
 $db = new City;
 $result = $db->addFilter("name", "LIKE", "%" . $name . "%")
              ->addLimit(1)
-             ->selectByValues(["state"], [$state_id], true);
+             ->selectAll();
 ```
 
 ### Insert/Update Records
