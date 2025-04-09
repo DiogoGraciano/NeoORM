@@ -20,7 +20,7 @@ trait DbSelect
     /**
      * Marca que o resultado deve ser retornado em array associativo.
      */
-    protected function asArray(): static
+    public function asArray(): static
     {
         $this->asArray = true;
         return $this;
@@ -29,7 +29,7 @@ trait DbSelect
     /**
      * Seleciona todos os registros da tabela.
      */
-    protected function selectAll(): array
+    public function selectAll(): array
     {
         $sql = "SELECT * FROM " . $this->table;
         $sql .= implode('', $this->joins);
@@ -50,7 +50,7 @@ trait DbSelect
     /**
      * Seleciona registros com base em colunas específicas.
      */
-    protected function selectColumns(...$columns): array
+    public function selectColumns(...$columns): array
     {
         $validatedColumns = array_map(function($col) {
             if(is_array($col) && count($col) == 2){
@@ -79,7 +79,7 @@ trait DbSelect
     /**
      * Conta os registros de acordo com os filtros/joins definidos.
      */
-    protected function count(bool $clean = false): int
+    public function count(bool $clean = false): int
     {
         try {
             $sql = 'SELECT count(*) FROM ' . $this->table;
@@ -126,7 +126,7 @@ trait DbSelect
     /**
      * Executa de fato a instrução SELECT (auxiliar usada por selectAll e selectColumns).
      */
-    protected function selectInstruction(string $sql_instruction): array
+    public function selectInstruction(string $sql_instruction): array
     {
         try {
             $sql = $this->executeSql($sql_instruction);

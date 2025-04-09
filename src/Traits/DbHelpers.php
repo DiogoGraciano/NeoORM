@@ -64,7 +64,7 @@ trait DbHelpers{
     /**
      * Retorna as colunas da tabela.
     */
-    protected function getColumns():array
+    public function getColumns():array
     {
         return $this->columns;
     }
@@ -192,7 +192,7 @@ trait DbHelpers{
      * Inicializa o array de objetos com campos nulos,
      * limpa a montagem de query e devolve $this para chain.
      */
-    protected function setObjectNull(): static
+    public function setObjectNull(): static
     {
         $this->object = [];
         foreach ($this->columns as $column) {

@@ -14,7 +14,7 @@ trait DbFilters
     /**
      * Ativa o modo debug (exibe binds e parâmetros).
      */
-    protected function setDebug(): static
+    public function setDebug(): static
     {
         $this->debug = true;
         return $this;
@@ -23,7 +23,7 @@ trait DbFilters
     /**
      * Adiciona um filtro WHERE.
      */
-    protected function addFilter(
+    public function addFilter(
         Raw|string $field,
         string $logicalOperator,
         mixed $value,
@@ -67,7 +67,7 @@ trait DbFilters
     /**
      * Adiciona uma ordenação (ORDER BY).
      */
-    protected function addOrder(Raw|string $column, OrderCondition $order = OrderCondition::DESC): static
+    public function addOrder(Raw|string $column, OrderCondition $order = OrderCondition::DESC): static
     {
         // Valida o nome da coluna
         $column = $this->validateIdentifier($column);
@@ -86,7 +86,7 @@ trait DbFilters
     /**
      * Adiciona cláusula LIMIT.
      */
-    protected function addLimit(int $limitIni, int $limitFim = 0): static
+    public function addLimit(int $limitIni, int $limitFim = 0): static
     {
         if ($limitFim) {
             $this->limit[] = " LIMIT {$this->setBind($limitIni)},{$this->setBind($limitFim)}";
@@ -100,7 +100,7 @@ trait DbFilters
     /**
      * Adiciona um OFFSET.
      */
-    protected function addOffset(int $offset): static
+    public function addOffset(int $offset): static
     {
         $this->limit[] = " OFFSET {$this->setBind($offset)}";
         return $this;
@@ -109,7 +109,7 @@ trait DbFilters
     /**
      * Adiciona um GROUP BY.
      */
-    protected function addGroup(...$columns): static
+    public function addGroup(...$columns): static
     {
         // Valida cada coluna
         $validatedColumns = array_map(function($col) {
@@ -123,7 +123,7 @@ trait DbFilters
     /**
      * Adiciona um filtro HAVING.
      */
-    protected function addHaving(
+    public function addHaving(
         Raw|string $field,
         string $logicalOperator,
         mixed $value,
@@ -163,7 +163,7 @@ trait DbFilters
     /**
      * Adiciona um JOIN (INNER, LEFT, RIGHT etc).
      */
-    protected function addJoin(
+    public function addJoin(
         Raw|string $table,
         Raw|string $columnTable,
         Raw|string $columnRelation,
