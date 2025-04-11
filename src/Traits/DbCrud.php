@@ -75,10 +75,19 @@ trait DbCrud
                     }
                 }
 
-                $this->executeSql($sql_instruction);
+                if($this->getDriverName() != 'mysql'){
+                    $sql_instruction .= " RETURNING {$primaryKey}";
+                }
+
+                $stmt = $this->executeSql($sql_instruction);
 
                 if ($this->class::table()->getAutoIncrement()) {
-                    $this->object[$primaryKey] = $this->pdo->lastInsertId();
+                    if($this->getDriverName() === 'mysql'){
+                        $this->object[$primaryKey] = $this->pdo->lastInsertId();
+                    }
+                    else{
+                        $this->object[$primaryKey] = $stmt->fetchColumn();
+                    }
                 }
 
                 return true;
