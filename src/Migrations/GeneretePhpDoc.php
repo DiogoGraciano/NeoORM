@@ -3,12 +3,13 @@
 namespace Diogodg\Neoorm\Migrations;
 
 use Diogodg\Neoorm\Abstract\Model;
+use Diogodg\Neoorm\Config;
 
 class GeneretePhpDoc
 {
     public function execute()
     {
-        $modelPath = $_ENV["PATH_MODEL"];
+        $modelPath = Config::getPathModel();
 
         if (!is_dir($modelPath)) {
             throw new \RuntimeException("Model dir not found: $modelPath");
@@ -100,6 +101,6 @@ class GeneretePhpDoc
 
     private function getClassNameFromFile(string $tableFile): string
     {
-        return $_ENV["MODEL_NAMESPACE"]."\\".str_replace(".php", "", $tableFile);
+        return Config::getModelNamespace()."\\".str_replace(".php", "", $tableFile);
     }
 }

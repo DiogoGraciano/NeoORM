@@ -2,6 +2,7 @@
 
 namespace Diogodg\Neoorm\Migrations\Driver;
 
+use Diogodg\Neoorm\Config;
 use Diogodg\Neoorm\Connection;
 use Diogodg\Neoorm\Migrations\Interface\Table;
 use Diogodg\Neoorm\Migrations\Column;
@@ -96,7 +97,7 @@ class TablePgsql implements Table
         // Inicia a Conexão
         $this->pdo = connection::getConnection();
 
-        $this->dbname = $_ENV["DBNAME"];
+        $this->dbname = Config::getDbName();
 
         if (!$this->validateName($this->table = strtolower(trim($table)))) {
             throw new Exception("Nome é invalido");

@@ -1,6 +1,7 @@
 <?php
 namespace Diogodg\Neoorm\Migrations;
 
+use Diogodg\Neoorm\Config;
 use Diogodg\Neoorm\Migrations\Driver\TableMysql;
 use Diogodg\Neoorm\Migrations\Driver\TablePgsql;
 use Diogodg\Neoorm\Migrations\Interface\Table as TableInterface;
@@ -14,10 +15,10 @@ class Table implements TableInterface
 
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "")
     {
-        if($_ENV["DRIVER"] == "mysql"){
+        if(Config::getDriver() == "mysql"){
             $this->table = new tableMysql($table,$engine,$collate,$comment);
         }
-        elseif($_ENV["DRIVER"] == "pgsql"){
+        elseif(Config::getDriver() == "pgsql"){
             $this->table = new tablePgsql($table,$engine,$collate,$comment);
         }
     }

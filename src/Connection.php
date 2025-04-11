@@ -50,32 +50,20 @@ class Connection
     {
         if (self::$pdo === null) {
             try {
-
-                if (!$_ENV) {
-                    if (\file_exists('.env'))
-                        $_ENV = parse_ini_file('.env');
-                    elseif (\file_exists('../.env'))
-                        $_ENV = parse_ini_file('../.env');
-                    elseif (\file_exists('../../.env'))
-                        $_ENV = parse_ini_file('../../.env');
-                    elseif (\file_exists('../../../.env'))
-                        $_ENV = parse_ini_file('../../../.env');
-                }
-
-                if ($_ENV["DRIVER"] == "mysql") {
+                if (Config::getDriver() == "mysql") {
                     $dsn = sprintf(
-                        $_ENV["DRIVER"] . ':host=%s;port=%s;dbname=%s;charset=%s',
-                        $_ENV["DBHOST"],
-                        $_ENV["DBPORT"],
-                        $_ENV["DBNAME"],
-                        $_ENV["DBCHARSET"]
+                        Config::getDriver() . ':host=%s;port=%s;dbname=%s;charset=%s',
+                        Config::getHost(),
+                        Config::getPort(),
+                        Config::getDbName(),
+                        Config::getCharset()
                     );
                 } else {
                     $dsn = sprintf(
-                        $_ENV["DRIVER"] . ':host=%s;port=%s;dbname=%s',
-                        $_ENV["DBHOST"],
-                        $_ENV["DBPORT"],
-                        $_ENV["DBNAME"]
+                        Config::getDriver() . ':host=%s;port=%s;dbname=%s',
+                        Config::getHost(),
+                        Config::getPort(),
+                        Config::getDbName()
                     );
                 }
                 self::$pdo = new PDO($dsn, $_ENV["DBUSER"], $_ENV["DBPASSWORD"]);

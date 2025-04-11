@@ -1,6 +1,7 @@
 <?php
 namespace Diogodg\Neoorm\Migrations;
 
+use Diogodg\Neoorm\Config;
 use Diogodg\Neoorm\Migrations\Driver\ColumnMysql;
 use Diogodg\Neoorm\Migrations\Driver\ColumnPgsql;
 use Diogodg\Neoorm\Migrations\Interface\Column as ColumnInterface;
@@ -14,10 +15,10 @@ class Column implements ColumnInterface
 
     public function __construct(string $name,string $type,string|int|null $size = null)
     {
-        if($_ENV["DRIVER"] == "mysql"){
+        if(Config::getDriver() == "mysql"){
             $this->column = new columnMysql($name,$type,$size);
         }
-        elseif($_ENV["DRIVER"] == "pgsql"){
+        elseif(Config::getDriver() == "pgsql"){
             $this->column = new columnPgsql($name,$type,$size);
         }
     }

@@ -2,6 +2,7 @@
 
 namespace Diogodg\Neoorm\Traits;
 
+use Diogodg\Neoorm\Config;
 use Exception;
 
 /**
@@ -75,14 +76,14 @@ trait DbCrud
                     }
                 }
 
-                if($this->getDriverName() != 'mysql'){
+                if(Config::getDriver() != 'mysql'){
                     $sql_instruction .= " RETURNING {$primaryKey}";
                 }
 
                 $stmt = $this->executeSql($sql_instruction);
 
                 if ($this->class::table()->getAutoIncrement()) {
-                    if($this->getDriverName() === 'mysql'){
+                    if(Config::getDriver() === 'mysql'){
                         $this->object[$primaryKey] = $this->pdo->lastInsertId();
                     }
                     else{

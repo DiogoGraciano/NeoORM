@@ -2,6 +2,7 @@
 
 namespace Diogodg\Neoorm\Migrations;
 
+use Diogodg\Neoorm\Config;
 use Diogodg\Neoorm\Connection;
 use Exception;
 
@@ -24,7 +25,7 @@ class Migrate
 
          connection::beginTransaction();
 
-         $tableFiles = scandir($_ENV["PATH_MODEL"]);
+         $tableFiles = scandir(Config::getPathModel());
          $allCreatedTableInstances = [];
 
          foreach ($tableFiles as $tableFile) {
@@ -67,32 +68,28 @@ class Migrate
 
    public function recreateDatabase()
    {
-      if (empty($_ENV)) {
-         throw new Exception('$_ENV should be set');
-      }
-
-      if ($_ENV["DRIVER"] == "mysql") {
+      if (Config::getDriver() == "mysql") {
          $dsn = sprintf(
-            $_ENV["DRIVER"] . ':host=%s;port=%s;charset=%s',
-            $_ENV["DBHOST"],
-            $_ENV["DBPORT"],
-            $_ENV["DBCHARSET"]
+            Config::getDriver() . ':host=%s;port=%s;charset=%s',
+            Config::getHost(),
+            Config::getPort(),
+            Config::getCharset()
          );
       } else {
          $dsn = sprintf(
-            $_ENV["DRIVER"] . ':host=%s;port=%s',
-            $_ENV["DBHOST"],
-            $_ENV["DBPORT"]
+            Config::getDriver() . ':host=%s;port=%s',
+            Config::getHost(),
+            Config::getPort()
          );
       }
-      $pdo = new \PDO($dsn, $_ENV["DBUSER"], $_ENV["DBPASSWORD"]);
+      $pdo = new \PDO($dsn, Config::getUser(), Config::getPassword());
       $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
       try {
-         $sql = $pdo->prepare("DROP DATABASE IF EXISTS " . $_ENV['DBNAME']);
+         $sql = $pdo->prepare("DROP DATABASE IF EXISTS " . Config::getDbName());
          $sql->execute();
 
-         $sql = $pdo->prepare("CREATE DATABASE " . $_ENV['DBNAME']);
+         $sql = $pdo->prepare("CREATE DATABASE " . Config::getDbName());
          $sql->execute();
       } catch (\PDOException $e) {
          echo "Erro ao criar banco de dados: " . $e->getMessage();
@@ -125,6 +122,6 @@ class Migrate
 
    private function getClassNameFromFile(string $tableFile): string
    {
-      return $_ENV["MODEL_NAMESPACE"]."\\".str_replace(".php", "", $tableFile);
+      return Config::getModelNamespace()."\\".str_replace(".php", "", $tableFile);
    }
 }
