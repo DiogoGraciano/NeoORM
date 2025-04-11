@@ -61,7 +61,7 @@ final class Config
     public static function getPathModel():string
     {
         self::init();
-        return isset(Config::getPathModel())?Config::getPathModel():"";
+        return isset($_ENV["PATH_MODEL"])?$_ENV["PATH_MODEL"]:"";
     }
 
     public static function getModelNamespace():string
