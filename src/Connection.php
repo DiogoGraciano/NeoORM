@@ -66,7 +66,7 @@ class Connection
                         Config::getDbName()
                     );
                 }
-                self::$pdo = new PDO($dsn, $_ENV["DBUSER"], $_ENV["DBPASSWORD"]);
+                self::$pdo = new PDO($dsn, Config::getUser(), Config::getPassword());
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             } catch (PDOException $e) {
                 throw new Exception("Erro ao conectar ao banco de dados");

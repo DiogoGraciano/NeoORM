@@ -1,6 +1,7 @@
 <?php
 namespace Diogodg\Neoorm\Migrations\Driver;
 
+use Diogodg\Neoorm\Config;
 use Diogodg\Neoorm\Connection;
 use Diogodg\Neoorm\Migrations\Interface\Table;
 use Diogodg\Neoorm\Migrations\Column;
@@ -121,7 +122,7 @@ class TableMysql implements Table
 
         $this->comment = $comment;
 
-        $this->dbname = $_ENV["DBNAME"];
+        $this->dbname = Config::getDbName();
         
         if(!$this->validateName($this->table = strtolower(trim($table)))){
             throw new Exception("Nome da tabela é invalido");
