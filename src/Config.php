@@ -11,7 +11,7 @@ final class Config
 
     private static function init()
     {
-        if (!$_ENV) {
+        if (!$_ENV && !($_ENV = parse_ini_file(dirname(__DIR__, 4).".env"))) {
             throw new Exception('$_ENV not set');
         }
     }
