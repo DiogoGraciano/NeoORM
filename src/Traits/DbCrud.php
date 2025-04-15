@@ -26,6 +26,9 @@ trait DbCrud
             }
 
             if ($this->object && !isset($this->object[0])) {
+
+                $isAutoIncrement = $this->class::table()->getAutoIncrement();
+
                 // Filtra apenas as chaves que estão definidas na tabela
                 $objectFilter = array_intersect_key($this->object, $columnsDb);
 
@@ -36,7 +39,7 @@ trait DbCrud
                     empty($objectFilter[$primaryKey])
                 ) {
                     // Se a tabela for auto-increment, removemos a PK do INSERT
-                    if ($this->class::table()->getAutoIncrement()) {
+                    if ($isAutoIncrement) {
                         unset($objectFilter[$primaryKey]);
                     } else {
                         $nextId = $this->getlastIdBd() + 1;
@@ -53,7 +56,7 @@ trait DbCrud
                     }
                     $valuesBD = rtrim($valuesBD, ",");
 
-                    $sql_instruction .= $keysBD . ") VALUES (" . $valuesBD . ");";
+                    $sql_instruction .= $keysBD . ") VALUES (" . $valuesBD . ")";
                 } else {
                     // Montagem do UPDATE
                     $sql_instruction = "UPDATE {$this->table} SET ";
@@ -76,13 +79,13 @@ trait DbCrud
                     }
                 }
 
-                if(Config::getDriver() != 'mysql'){
+                if($isAutoIncrement && Config::getDriver() != 'mysql'){
                     $sql_instruction .= " RETURNING {$primaryKey}";
                 }
 
                 $stmt = $this->executeSql($sql_instruction);
 
-                if ($this->class::table()->getAutoIncrement()) {
+                if ($isAutoIncrement) {
                     if(Config::getDriver() === 'mysql'){
                         $this->object[$primaryKey] = $this->pdo->lastInsertId();
                     }
