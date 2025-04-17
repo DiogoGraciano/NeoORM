@@ -179,14 +179,14 @@ class NeoOrmTest extends TestCase
         $company_id = 1;
 
         $db = new Appointment();
-        $result = $db->addJoin("user", "user.id", "appointment.user_id","LEFT")
+        $result = $db->addJoin("users", "users.id", "appointment.user_id","LEFT")
                      ->addJoin("schedule", "schedule.id", "appointment.schedule_id")
                      ->addJoin("client", "client.id", "appointment.client_id","LEFT")
                      ->addJoin("employee", "employee.id", "appointment.employee_id")
                      ->addFilter("schedule.company_id", "=", $company_id)
-                     ->selectColumns("appointment.id", "user.tax_id", ["client.name","client_name"], 
-                                     new \Diogodg\Neoorm\Definitions\Raw("user.name as user_name"), 
-                                     "user.email", "user.phone", ["schedule.name","schedule_name"], 
+                     ->selectColumns("appointment.id", "users.tax_id", ["client.name","client_name"], 
+                                     new \Diogodg\Neoorm\Definitions\Raw("users.name as user_name"), 
+                                     "users.email", "users.phone", ["schedule.name","schedule_name"], 
                                      ["employee.name","employee_name"], "start_date", "end_date");
 
         $this->assertIsArray($result);

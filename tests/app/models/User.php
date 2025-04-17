@@ -7,7 +7,7 @@ use Diogodg\Neoorm\Migrations\Table;
 use Diogodg\Neoorm\Migrations\Column;
 
 class User extends Model {
-    public const table = "user";
+    public const table = "users";
 
     public function __construct() {
         parent::__construct(self::table,self::class);

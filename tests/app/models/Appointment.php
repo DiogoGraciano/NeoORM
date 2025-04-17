@@ -24,8 +24,8 @@ class Appointment extends Model {
                 ->addForeignKey(Client::table, column:"client_id")
                 ->addColumn((new Column("employee_id", "INT"))->isNotNull()->setComment("Employee ID assigned to appointment"))
                 ->addForeignKey(Employee::table, column:"employee_id")
-                ->addColumn((new Column("start_date", "DATETIME"))->isNotNull()->setComment("Appointment start date and time"))
-                ->addColumn((new Column("end_date", "DATETIME"))->isNotNull()->setComment("Appointment end date and time"))
+                ->addColumn((new Column("start_date", "TIMESTAMP"))->isNotNull()->setComment("Appointment start date and time"))
+                ->addColumn((new Column("end_date", "TIMESTAMP"))->isNotNull()->setComment("Appointment end date and time"))
                 ->addColumn((new Column("status", "VARCHAR", 20))->isNotNull()->setDefault("scheduled")->setComment("Appointment status"));
     }
 
