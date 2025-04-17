@@ -8,6 +8,11 @@
             "Diogodg\\Neoorm\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\":"tests"
+        }
+    },
     "authors": [
         {
             "name": "Diogo Graciano",
@@ -15,5 +20,7 @@
         }
     ],
     "minimum-stability": "stable",
-    "require": {}
+    "require-dev": {
+        "phpunit/phpunit": "^12.1"
+    }
 }

@@ -60,7 +60,7 @@ class Migrate
 
          connection::commit();
       } catch (\Exception $e) {
-         connection::rollBack();
+         //connection::rollBack();
          echo "Erro durante a migração: " . $e->getMessage() . PHP_EOL;
          throw $e;
       }

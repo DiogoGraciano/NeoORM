@@ -13,7 +13,7 @@ trait DbCrud
     /**
      * Salva ou Atualiza um registro na tabela.
      */
-    protected function store(): bool
+    public function store(): bool
     {
         try {
             // Mapeia as colunas e valida cada uma delas
@@ -85,7 +85,7 @@ trait DbCrud
 
                 $stmt = $this->executeSql($sql_instruction);
 
-                if ($isAutoIncrement) {
+                if ($isAutoIncrement && (!isset($objectFilter[$primaryKey]) || !$objectFilter[$primaryKey])) {
                     if(Config::getDriver() === 'mysql'){
                         $this->object[$primaryKey] = $this->pdo->lastInsertId();
                     }
@@ -105,7 +105,7 @@ trait DbCrud
     /**
      * Salva um registro na tabela com múltiplas chaves primárias.
      */
-    protected function storeMutiPrimary(): bool
+    public function storeMutiPrimary(): bool
     {
         try {
             // Valida a tabela e as colunas
@@ -141,7 +141,7 @@ trait DbCrud
     /**
      * Deleta um registro a partir de um ID.
      */
-    protected function delete(string|int $id): bool
+    public function delete(string|int $id): bool
     {
         try {
             if ($id) {
@@ -158,7 +158,7 @@ trait DbCrud
     /**
      * Deleta registros com base em filtros configurados.
      */
-    protected function deleteByFilter(): bool
+    public function deleteByFilter(): bool
     {
         try {
             $sql = "DELETE FROM {$this->table}";

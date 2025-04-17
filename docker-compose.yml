@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: 'postgres:17'
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_PASSWORD: postgres
+    networks:
+      - app
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '80:80'
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    networks:
+      - app
+
+  mysql:
+    image: 'mysql:8.0'
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: neoorm_test 
+    networks:
+      - app
+
+networks:
+  app:
+    driver: bridge
