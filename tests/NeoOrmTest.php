@@ -4,6 +4,7 @@ namespace Tests;
 
 use PHPUnit\Framework\TestCase;
 use Diogodg\Neoorm\Connection;
+use Diogodg\Neoorm\Enums\OrderCondition;
 use Tests\App\Models\Appointment;
 use Tests\App\Models\City;
 use Tests\App\Models\Client;
@@ -268,6 +269,35 @@ class NeoOrmTest extends TestCase
         $updated = (new Employee())->get($employee->id);
         $this->assertEquals('Updated Employee', $updated->name);
         $this->assertEquals('updated.employee@example.com', $updated->email);
+    }
+
+    /**
+     * Teste de multiplos ordenamentos
+    */
+    public function testMultipleOrder(): void
+    {
+        $db = new Country();
+        $db->name = "Test Country";
+        $db->abbreviation = "T1";
+        $db->store();
+
+        $db = new Country();
+        $db->name = "Test Country 2";
+        $db->abbreviation = "T2";
+        $db->store();
+
+        $db = new Country();
+        $db->name = "Test Country 3";
+        $db->abbreviation = "T3";
+        $db->store();
+
+        $result = $db->addOrder("id", OrderCondition::ASC)
+                     ->addOrder("name", OrderCondition::DESC)
+                     ->addOrder("abbreviation", OrderCondition::ASC)
+                     ->selectAll();
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
     }
 
     /**

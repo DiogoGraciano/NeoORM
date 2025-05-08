@@ -73,9 +73,9 @@ trait DbFilters
         $column = $this->validateIdentifier($column);
 
         if ($this->hasOrder) {
-            $this->order[$order->name] .= "," . $column;
+            $this->order[] .= "," . $column . " " . $order->name;
         } else {
-            $this->order[$order->name] = " ORDER BY " . $column;
+            $this->order[] = " ORDER BY " . $column . " " . $order->name;
         }
 
         $this->hasOrder = true;
