@@ -8,7 +8,13 @@ abstract class Model extends Db{
 
     public const table = "";
 
-    private static array $lastCount = [];
+    private static array $lastCount = [];   
+
+    private int $modalTotalRegisters = 0;
+
+    private int $modalCurrentPage = 1;
+
+    private int $modalLimit = 15;
 
     public function __construct($table,$class){
         parent::__construct($table,$class);
@@ -52,6 +58,51 @@ abstract class Model extends Db{
     {
         return $this->delete($this->getArrayData()[$this->getColumns()[0]]);
     }
+
+    public function paginate(int $page = 1,int $limit = 15):array
+    {
+        $this->modalTotalRegisters = $this->count();
+
+        $page = $page <= 0 ? 1 : $page;
+        $this->modalCurrentPage = $page;
+        $limit = $limit <= 0 ? 15 : $limit;
+        $this->modalLimit = $limit;
+
+        $this->addLimit($limit);
+        $this->addOffset($this->getOffset());
+        return $this->selectAll();
+    }
+
+    public function getPreviousPage():int
+    {
+        return $this->modalCurrentPage > 1 ? $this->modalCurrentPage - 1 : 1;
+    }
+
+    public function getNextPage():int
+    {
+        return $this->modalCurrentPage < $this->getLastPage() ? $this->modalCurrentPage + 1 : $this->getLastPage();
+    }
+
+    public function getLastPage():int
+    {
+        return ceil($this->modalTotalRegisters/$this->modalLimit);
+    }
+
+    public function getCurrentPage():int
+    {
+        return $this->modalCurrentPage;
+    }
+
+    public function getLimit():int
+    {
+        return $this->modalLimit;
+    }
+
+    public function getOffset():int
+    {
+        return ($this->modalCurrentPage-1)*$this->modalLimit;
+    }
+    
 }
 
 ?>

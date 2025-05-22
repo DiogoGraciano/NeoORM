@@ -477,4 +477,67 @@ class NeoOrmTest extends TestCase
         $cities = (new City())->getAll();
         $this->assertNotEmpty($cities);
     }
+
+    /**
+     * Teste de paginação
+     */
+    public function testPagination(): void
+    {
+        // Criar alguns registros adicionais para testar paginação
+        for ($i = 1; $i <= 25; $i++) {
+            $employee = new Employee();
+            $employee->user_id = (new User())->getAll()[0]->id;
+            $employee->name = "Test Employee {$i}";
+            $employee->tax_id = "11122233345{$i}";
+            $employee->email = "employee{$i}@example.com";
+            $employee->phone = "5588888888{$i}";
+            $employee->start_time = '08:00:00';
+            $employee->end_time = '18:00:00';
+            $employee->lunch_start = '12:00:00';
+            $employee->lunch_end = '13:00:00';
+            $employee->days = '1,2,3,4,5';
+            $employee->store();
+        }
+
+        $db = new Employee();
+        
+        // Teste página 1 com limite padrão (15)
+        $result = $db->paginate(1);
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        $this->assertCount(15, $result);
+        $this->assertEquals(1, $db->getCurrentPage());
+        $this->assertEquals(15, $db->getLimit());
+        $this->assertEquals(0, $db->getOffset());
+        $this->assertEquals(1, $db->getPreviousPage());
+        $this->assertEquals(2, $db->getNextPage());
+        $this->assertEquals(2, $db->getLastPage());
+
+        // Teste página 2 com limite personalizado (10)
+        $result = $db->paginate(2, 10);
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        $this->assertCount(10, $result);
+        $this->assertEquals(2, $db->getCurrentPage());
+        $this->assertEquals(10, $db->getLimit());
+        $this->assertEquals(10, $db->getOffset());
+        $this->assertEquals(1, $db->getPreviousPage());
+        $this->assertEquals(3, $db->getNextPage());
+        $this->assertEquals(3, $db->getLastPage());
+
+        // Teste página inválida (deve retornar página 1)
+        $result = $db->paginate(0, 10);
+        $this->assertEquals(1, $db->getCurrentPage());
+        $this->assertEquals(0, $db->getOffset());
+
+        // Teste limite inválido (deve usar limite padrão 15)
+        $result = $db->paginate(1, 0);
+        $this->assertEquals(15, $db->getLimit());
+
+        // Teste última página
+        $result = $db->paginate(3, 10);
+        $this->assertEquals(3, $db->getCurrentPage());
+        $this->assertEquals(3, $db->getNextPage()); // Não deve avançar além da última página
+        $this->assertEquals(2, $db->getPreviousPage());
+    }
 }
