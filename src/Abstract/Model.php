@@ -59,7 +59,7 @@ abstract class Model extends Db{
         return $this->delete($this->getArrayData()[$this->getColumns()[0]]);
     }
 
-    public function paginate(int $page = 1,int $limit = 15):array
+    public function paginate(int $page = 1,int $limit = 15):Model
     {
         $this->modalTotalRegisters = $this->count();
 
@@ -70,7 +70,8 @@ abstract class Model extends Db{
 
         $this->addLimit($limit);
         $this->addOffset($this->getOffset());
-        return $this->selectAll();
+        
+        return $this;
     }
 
     public function getPreviousPage():int
