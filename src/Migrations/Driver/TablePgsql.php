@@ -306,7 +306,7 @@ class TablePgsql implements Table
                 if ($column["constraint_type"] == "FOREIGN KEY") {
                     $ForeingkeyName = $column["constraint_name"];
                     if ($ForeingkeyName) {
-                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$coluna};" . $sql;
+                        $sql = "DROP INDEX IF EXISTS {$coluna};" . $sql;
                         $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};" . $sql;
                     }
                 }
@@ -398,7 +398,7 @@ class TablePgsql implements Table
                     $ForeingkeyName = $columnInformation["constraint_name"];
                     if ($ForeingkeyName) {
                         $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName};" . $sql;
-                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};" . $sql;
+                        $sql = "DROP INDEX IF EXISTS {$column->name};" . $sql;
                         $removed = true;
                     } else
                         throw new Exception($this->table . ": Não foi possivel remover FOREIGN KEY para atualizar a coluna " . $column->name);
@@ -407,7 +407,7 @@ class TablePgsql implements Table
                     $sql .= "ALTER TABLE {$this->table} ADD UNIQUE ({$column->name});";
                 }
                 if ($inDb && !$column->unique && $columnInformation["constraint_type"] == "UNIQUE") {
-                    $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
+                    $sql .= "DROP INDEX IF EXISTS {$column->name};";
                 }
                 if ((!$inDb && in_array($column->name, $this->foreningColumns)) || (in_array($column->name, $this->foreningColumns) && !$this->getForeignKeyName($column->name)) || (in_array($column->name, $this->foreningColumns) && $removed)) {
                     $key = array_search($column->name, $this->foreningColumns);
@@ -439,6 +439,25 @@ class TablePgsql implements Table
             $sql .= "ALTER TABLE {$this->table} DROP PRIMARY KEY,ADD PRIMARY KEY(" . implode(",", $this->primary) . ");";
         }
 
+        // Gerenciar constraints customizadas
+        if ($this->constraints) {
+            $currentConstraints = $this->getConstraintInformation();
+            
+            // Remove constraints que não existem mais
+            foreach ($currentConstraints as $constraintName) {
+                if (!array_key_exists($constraintName, $this->constraints)) {
+                    $sql .= 'ALTER TABLE '.$this->table.' DROP CONSTRAINT IF EXISTS "'.$constraintName.'";';
+                }
+            }
+            
+            // Adiciona ou atualiza constraints
+            foreach ($this->constraints as $constraintName => $constraint) {
+                if (!in_array($constraintName, $currentConstraints)) {
+                    $sql .= $constraint["sql"];
+                }
+            }
+        }
+
         if ($this->indexs) {
             $indexInformation = $this->getIndexInformation();
             if ($indexInformation) {
@@ -449,7 +468,7 @@ class TablePgsql implements Table
                         continue;
                     }
 
-                    if (!in_array($indexDb, array_keys($this->indexs))) {
+                    if (!in_array($indexDb, array_keys($this->indexs)) && !in_array($indexDb, array_keys($this->constraints))) {
                         $sql .= "DROP INDEX IF EXISTS {$indexDb};";
                         continue;
                     }
@@ -483,25 +502,6 @@ class TablePgsql implements Table
             } else {
                 foreach ($this->indexs as $index) {
                     $sql .= $index["sql"];
-                }
-            }
-        }
-
-        // Gerenciar constraints customizadas
-        if ($this->constraints) {
-            $currentConstraints = $this->getConstraintInformation();
-            
-            // Remove constraints que não existem mais
-            foreach ($currentConstraints as $constraintName) {
-                if (!array_key_exists($constraintName, $this->constraints)) {
-                    $sql .= "ALTER TABLE {$this->table} DROP CONSTRAINT IF EXISTS {$constraintName};";
-                }
-            }
-            
-            // Adiciona ou atualiza constraints
-            foreach ($this->constraints as $constraintName => $constraint) {
-                if (!in_array($constraintName, $currentConstraints)) {
-                    $sql .= $constraint["sql"];
                 }
             }
         }
