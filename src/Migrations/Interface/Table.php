@@ -14,6 +14,8 @@ interface Table
 
     public function addIndex(string $name,array $columns);
 
+    public function addConstraint(string $name,string $type,array $columns);
+
     public function create();
 
     public function update();
@@ -31,4 +33,5 @@ interface Table
     public function getColumns():array;
     
     public function exists():bool;
+
 }

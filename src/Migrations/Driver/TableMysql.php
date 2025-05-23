@@ -98,6 +98,13 @@ class TableMysql implements Table
     private array $foreningColumns = [];
 
     /**
+     * constraints customizadas
+     *
+     * @var array
+     */
+    private array $constraints = [];
+
+    /**
      * outros comandos.
      *
      * @var string
@@ -206,6 +213,60 @@ class TableMysql implements Table
         }
     }
 
+    public function addConstraint(string $name, string $type, array $columns): self
+    {
+        $name = strtolower(trim($name));
+        $type = strtoupper(trim($type));
+        
+        if (!$this->validateName($name)) {
+            throw new Exception("Nome da constraint é inválido: " . $name);
+        }
+
+        if (empty($columns)) {
+            throw new Exception("É necessário especificar pelo menos uma coluna para a constraint");
+        }
+
+        // Valida se as colunas existem na tabela
+        if ($this->columns) {
+            $tableColumns = array_keys($this->columns);
+            foreach ($columns as $column) {
+                $column = strtolower(trim($column));
+                if (!in_array($column, $tableColumns)) {
+                    throw new Exception("Coluna não encontrada na tabela: " . $column);
+                }
+            }
+        }
+
+        $columnsList = implode(",", array_map('strtolower', array_map('trim', $columns)));
+
+        switch ($type) {
+            case 'CHECK':
+                throw new Exception("Para constraints CHECK, use addColumn() com validação personalizada");
+                
+            case 'UNIQUE':
+                $constraintSql = "ALTER TABLE {$this->table} ADD CONSTRAINT {$name} UNIQUE ({$columnsList});";
+                break;
+                
+            case 'PRIMARY KEY':
+                $constraintSql = "ALTER TABLE {$this->table} ADD CONSTRAINT {$name} PRIMARY KEY ({$columnsList});";
+                break;
+                
+            case 'FOREIGN KEY':
+                throw new Exception("Para constraints FOREIGN KEY, use addForeignKey()");
+                
+            default:
+                throw new Exception("Tipo de constraint não suportado: " . $type);
+        }
+
+        $this->constraints[$name] = [
+            'type' => $type,
+            'columns' => $columns,
+            'sql' => $constraintSql
+        ];
+
+        return $this;
+    }
+
     public function create()
     {
         $sql = "SET FOREIGN_KEY_CHECKS = 0; DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
@@ -226,6 +287,11 @@ class TableMysql implements Table
         
         foreach ($this->indexs as $index) {
             $sql .= $index["sql"];
+        }
+
+        // Adiciona constraints customizadas
+        foreach ($this->constraints as $constraint) {
+            $sql .= $constraint["sql"];
         }
 
         $sql = str_replace(", )",")",$sql);
@@ -408,6 +474,25 @@ class TableMysql implements Table
             }
         }
 
+        // Gerenciar constraints customizadas
+        if ($this->constraints) {
+            $currentConstraints = $this->getConstraintInformation();
+            
+            // Remove constraints que não existem mais
+            foreach ($currentConstraints as $constraintName) {
+                if (!array_key_exists($constraintName, $this->constraints)) {
+                    $sql .= "ALTER TABLE {$this->table} DROP CONSTRAINT {$constraintName};";
+                }
+            }
+            
+            // Adiciona ou atualiza constraints
+            foreach ($this->constraints as $constraintName => $constraint) {
+                if (!in_array($constraintName, $currentConstraints)) {
+                    $sql .= $constraint["sql"];
+                }
+            }
+        }
+
         if($sql){
             $this->pdo->exec($sql);
         }
@@ -530,6 +615,30 @@ class TableMysql implements Table
         return $rows;   
     }
     
+    private function getConstraintInformation()
+    {
+        $sql = $this->pdo->prepare("
+            SELECT CONSTRAINT_NAME 
+            FROM information_schema.TABLE_CONSTRAINTS 
+            WHERE TABLE_SCHEMA = :db 
+            AND TABLE_NAME = :table 
+            AND CONSTRAINT_TYPE IN ('UNIQUE', 'CHECK')
+            AND CONSTRAINT_NAME != 'PRIMARY'
+        ");
+       
+        $sql->bindParam(':db', $this->dbname);
+        $sql->bindParam(':table', $this->table);
+        $sql->execute();
+
+        $rows = [];
+
+        if ($sql->rowCount() > 0) {
+            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+        }
+
+        return $rows;   
+    }
+
     private function validateName($name) {
 
         $regex = '/^[a-zA-Z_][a-zA-Z0-9_]*$/';

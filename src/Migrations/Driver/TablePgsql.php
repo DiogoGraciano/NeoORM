@@ -85,6 +85,13 @@ class TablePgsql implements Table
     private array $foreningColumns = [];
 
     /**
+     * constraints customizadas
+     *
+     * @var array
+     */
+    private array $constraints = [];
+
+    /**
      * Nome da tabela.
      *
      * @var string
@@ -183,6 +190,63 @@ class TablePgsql implements Table
         }
     }
 
+    public function addConstraint(string $name, string $type, array $columns): self
+    {
+        $name = strtolower(trim($name));
+        $type = strtoupper(trim($type));
+        
+        if (!$this->validateName($name)) {
+            throw new Exception("Nome da constraint é inválido: " . $name);
+        }
+
+        if (empty($columns)) {
+            throw new Exception("É necessário especificar pelo menos uma coluna para a constraint");
+        }
+
+        // Valida se as colunas existem na tabela
+        if ($this->columns) {
+            $tableColumns = array_keys($this->columns);
+            foreach ($columns as $column) {
+                $column = strtolower(trim($column));
+                if (!in_array($column, $tableColumns)) {
+                    throw new Exception("Coluna não encontrada na tabela: " . $column);
+                }
+            }
+        }
+
+        $columnsList = implode(",", array_map('strtolower', array_map('trim', $columns)));
+
+        switch ($type) {
+            case 'CHECK':
+                throw new Exception("Para constraints CHECK, use addColumn() com validação personalizada");
+                
+            case 'UNIQUE':
+                $constraintSql = "ALTER TABLE {$this->table} ADD CONSTRAINT {$name} UNIQUE ({$columnsList});";
+                break;
+                
+            case 'PRIMARY KEY':
+                $constraintSql = "ALTER TABLE {$this->table} ADD CONSTRAINT {$name} PRIMARY KEY ({$columnsList});";
+                break;
+                
+            case 'FOREIGN KEY':
+                throw new Exception("Para constraints FOREIGN KEY, use addForeignKey()");
+                
+            case 'EXCLUSION':
+                throw new Exception("Para constraints EXCLUSION, use o método create() diretamente com SQL personalizado");
+                
+            default:
+                throw new Exception("Tipo de constraint não suportado: " . $type);
+        }
+
+        $this->constraints[$name] = [
+            'type' => $type,
+            'columns' => $columns,
+            'sql' => $constraintSql
+        ];
+
+        return $this;
+    }
+
     public function create()
     {
         $sql = "SET session_replication_role = 'replica'; DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
@@ -204,6 +268,10 @@ class TablePgsql implements Table
 
         foreach ($this->indexs as $index) {
             $sql .= $index["sql"];
+        }
+
+        foreach ($this->constraints as $constraint) {
+            $sql .= $constraint["sql"];
         }
 
         $sql = str_replace(",)", ")", $sql) . " SET session_replication_role = 'origin';";
@@ -419,6 +487,25 @@ class TablePgsql implements Table
             }
         }
 
+        // Gerenciar constraints customizadas
+        if ($this->constraints) {
+            $currentConstraints = $this->getConstraintInformation();
+            
+            // Remove constraints que não existem mais
+            foreach ($currentConstraints as $constraintName) {
+                if (!array_key_exists($constraintName, $this->constraints)) {
+                    $sql .= "ALTER TABLE {$this->table} DROP CONSTRAINT IF EXISTS {$constraintName};";
+                }
+            }
+            
+            // Adiciona ou atualiza constraints
+            foreach ($this->constraints as $constraintName => $constraint) {
+                if (!in_array($constraintName, $currentConstraints)) {
+                    $sql .= $constraint["sql"];
+                }
+            }
+        }
+
         if ($sql) {
             $instructios = explode(";", $sql);
             foreach ($instructios as $query) {
@@ -577,6 +664,30 @@ class TablePgsql implements Table
         $sql->bindParam(':schema', $schema);
         $sql->bindParam(':table', $this->table);
         $sql->bindParam(':column', $column);
+        $sql->execute();
+
+        $rows = [];
+
+        if ($sql->rowCount() > 0) {
+            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+        }
+
+        return $rows;
+    }
+
+    private function getConstraintInformation()
+    {
+        $sql = $this->pdo->prepare("
+            SELECT constraint_name 
+            FROM information_schema.table_constraints 
+            WHERE table_catalog = :db 
+            AND table_name = :table 
+            AND constraint_type IN ('UNIQUE', 'CHECK')
+            AND constraint_name NOT LIKE '%_pkey'
+        ");
+
+        $sql->bindParam(':db', $this->dbname);
+        $sql->bindParam(':table', $this->table);
         $sql->execute();
 
         $rows = [];

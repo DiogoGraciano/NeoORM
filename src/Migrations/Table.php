@@ -45,6 +45,12 @@ class Table implements TableInterface
         return $this;
     }
 
+    public function addConstraint(string $name, string $type, array $columns)
+    {
+        $this->table->addConstraint($name, $type, $columns);
+        return $this;
+    }
+
     public function create()
     {
         $this->table->create();
