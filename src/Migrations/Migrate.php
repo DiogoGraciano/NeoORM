@@ -23,6 +23,9 @@ class Migrate
             $this->recreateDatabase();
          }
 
+         // Cria as tabelas de rastreamento do schema antes de qualquer migração
+         $this->createSchemaTrackingTables();
+
          connection::beginTransaction();
 
          $tableFiles = scandir(Config::getPathModel());
@@ -63,6 +66,24 @@ class Migrate
          //connection::rollBack();
          echo "Erro durante a migração: " . $e->getMessage() . PHP_EOL;
          throw $e;
+      }
+   }
+
+   /**
+    * Cria as tabelas de rastreamento do schema
+    */
+   private function createSchemaTrackingTables(): void
+   {
+      try {
+         echo "Criando tabelas de rastreamento do schema..." . PHP_EOL;
+         
+         $schemaTracker = new SchemaTracker();
+         $schemaTracker->createTrackingTables();
+         
+         echo "Tabelas de rastreamento criadas com sucesso!" . PHP_EOL;
+      } catch (\Exception $e) {
+         echo "Erro ao criar tabelas de rastreamento: " . $e->getMessage() . PHP_EOL;
+         throw new Exception("Falha ao criar tabelas de rastreamento do schema: " . $e->getMessage());
       }
    }
 

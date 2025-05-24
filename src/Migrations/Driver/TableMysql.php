@@ -5,10 +5,14 @@ use Diogodg\Neoorm\Config;
 use Diogodg\Neoorm\Connection;
 use Diogodg\Neoorm\Migrations\Interface\Table;
 use Diogodg\Neoorm\Migrations\Column;
+use Diogodg\Neoorm\Migrations\SchemaReader;
+use Diogodg\Neoorm\Migrations\SchemaTracker;
+use Diogodg\Neoorm\Migrations\SchemaComparator;
+use Diogodg\Neoorm\Migrations\SchemaExtractor;
 use Exception;
 
 /**
- * Classe base para criação do banco de dados.
+ * Classe base para criação do banco de dados MySQL.
  */
 class TableMysql implements Table
 {
@@ -118,6 +122,34 @@ class TableMysql implements Table
      */
     private string $dbname = "";
 
+    /**
+     * Schema reader para acessar tabelas de rastreamento
+     *
+     * @var SchemaReader
+     */
+    private SchemaReader $schemaReader;
+
+    /**
+     * Schema tracker para rastrear mudanças
+     *
+     * @var SchemaTracker
+     */
+    private SchemaTracker $schemaTracker;
+
+    /**
+     * Schema comparator para gerar comandos SQL
+     *
+     * @var SchemaComparator
+     */
+    private SchemaComparator $schemaComparator;
+
+    /**
+     * Schema extractor para extrair informações
+     *
+     * @var SchemaExtractor
+     */
+    private SchemaExtractor $schemaExtractor;
+
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "")
     {
         // Inicia a Conexão
@@ -130,6 +162,11 @@ class TableMysql implements Table
         $this->comment = $comment;
 
         $this->dbname = Config::getDbName();
+
+        $this->schemaReader = new SchemaReader();
+        $this->schemaTracker = new SchemaTracker();
+        $this->schemaComparator = new SchemaComparator($this->schemaTracker);
+        $this->schemaExtractor = new SchemaExtractor();
         
         if(!$this->validateName($this->table = strtolower(trim($table)))){
             throw new Exception("Nome da tabela é invalido");
@@ -269,6 +306,33 @@ class TableMysql implements Table
 
     public function create()
     {
+        try {
+            // Extrai o schema atual da tabela
+            $currentSchema = $this->schemaExtractor->extractTableSchema($this);
+            
+            // Executa a criação da tabela
+            $this->executeCreateTable();
+            
+            // Salva o schema nas tabelas de rastreamento
+            $this->schemaTracker->saveTableSchema(
+                $this->table,
+                $currentSchema['table'],
+                $currentSchema['columns'],
+                $currentSchema['indexes'],
+                $currentSchema['constraints'],
+                $currentSchema['foreign_keys']
+            );
+            
+        } catch (Exception $e) {
+            throw new Exception("Erro ao criar tabela {$this->table}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Executa a criação física da tabela
+     */
+    private function executeCreateTable(): void
+    {
         $sql = "SET FOREIGN_KEY_CHECKS = 0; DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
         foreach ($this->columns as $column) {            
             $sql .= implode(",",array_filter($column->columnSql));
@@ -297,10 +361,6 @@ class TableMysql implements Table
         $sql = str_replace(", )",")",$sql);
         $sql = str_replace(",)",")",$sql)." SET FOREIGN_KEY_CHECKS = 1;";
 
-        if($this->table == "usuario"){
-            echo $sql;
-        }
-
         $this->pdo->exec($sql);
     }
 
@@ -312,189 +372,51 @@ class TableMysql implements Table
 
     public function update()
     {
-        $sql = "";
-
-        $table = $this->getColumnsTable();
-
-        foreach ($table as $column){
-            if(!in_array($column["COLUMN_NAME"],array_keys($this->columns))){
-                $coluna = $column["COLUMN_NAME"];
-                if($column["COLUMN_KEY"] == "MUL"){
-                    $ForeingkeyName = $this->getForeingKeyName($coluna);
-                    if(isset($ForeingkeyName[0])){
-                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$coluna};".$sql;
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
-                    }
-                }
-                $sql .= "ALTER TABLE {$this->table} DROP COLUMN {$coluna};";
-            }  
-        }
-
-        $primaryKeyDb = [];
-        foreach ($this->columns as $column) {
-
-            $inDb = false;
-            foreach ($table as $tablecolumn){
-                if($tablecolumn["COLUMN_NAME"] == $column->name){
-                    $inDb = true;
-                    break;
-                }
+        try {
+            // Se a tabela não existe fisicamente, cria ela
+            if (!$this->exists()) {
+                return $this->create();
             }
 
-            $columnInformation = array_filter($table,fn($key) => in_array($column->name,$table[$key]),ARRAY_FILTER_USE_KEY);
-            $primaryKeyDb = array_column(array_filter($table,fn($key) => in_array("PRI",$table[$key]),ARRAY_FILTER_USE_KEY),"COLUMN_NAME");
-
-            if(isset($columnInformation[array_key_first($columnInformation)]))
-                $columnInformation = $columnInformation[array_key_first($columnInformation)];
-            else 
-                $columnInformation = [];
-
-            if(!$inDb || $columnInformation){
-                
-                !$inDb?$operation = "ADD":$operation = "MODIFY";
-               
-                $changed = false;
-                $removed = false;
-                if(!$inDb || strtolower(explode("(",$column->type)[0]) != $columnInformation["COLUMN_TYPE"] || 
-                    ($columnInformation["IS_NULLABLE"] == "YES" && $column->null) || 
-                    ($columnInformation["IS_NULLABLE"] == "NO" && !$column->null) || 
-                    $columnInformation["COLUMN_DEFAULT"] != $column->defaultValue || 
-                    $columnInformation["COLUMN_COMMENT"] != $column->commentValue){
-                    $changed = true;
-                    $sql .= "ALTER TABLE {$this->table} {$operation} COLUMN {$column->name} {$column->type} {$column->null} {$column->default} {$column->comment};";
-                }
-                if($inDb && (in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] == "MUL") && $changed){
-                    $ForeingkeyName = $this->getForeingKeyName($column->name);
-                    if(isset($ForeingkeyName[0])){
-                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
-                        $removed = true;
-                    }else 
-                        throw new Exception($this->table.": Não foi possivel remover FOREIGN KEY para atualizar a coluna ".$column->name);
-                }
-                if(!$inDb && $column->unique || ($column->unique && $columnInformation["COLUMN_KEY"] != "UNI")){
-                    $sql .= "ALTER TABLE {$this->table} ADD UNIQUE ({$column->name});";
-                }
-                if($inDb && !$column->unique && $columnInformation["COLUMN_KEY"] == "UNI"){
-                    $sql .= "ALTER TABLE {$this->table} DROP INDEX {$column->name};";
-                }
-                if(!$inDb && in_array($column->name,$this->foreningColumns) || (in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] != "MUL") || (in_array($column->name,$this->foreningColumns) && $removed)){
-                    $ForeingkeyName = $this->getForeingKeyName($column->name);
-                    if(!isset($ForeingkeyName[0])){
-                        $key = array_search($column->name, $this->foreningColumns);
-                        $sql .= "ALTER TABLE {$this->table} ADD FOREIGN KEY ({$column->name}) REFERENCES {$this->foreningTables[$key]}({$key});";
-                    }
-                }
-                if($inDb && !in_array($column->name,$this->foreningColumns) && $columnInformation["COLUMN_KEY"] == "MUL"){
-                    $ForeingkeyName = $this->getForeingKeyName($column->name);
-                    if(isset($ForeingkeyName[0])){
-                        $sql = "ALTER TABLE {$this->table} DROP INDEX {$column->name};".$sql;
-                        $sql = "ALTER TABLE {$this->table} DROP FOREIGN KEY {$ForeingkeyName[0]};".$sql;
-                    }
-                }
-            }
-        }
-
-        $primaryChanged = false;
-        foreach ($this->primary as $primary){
-            if(!in_array($primary,$primaryKeyDb)){
-                $primaryChanged = true;
-                break;
-            }
-        }
-
-        foreach ($primaryKeyDb as $primary){
-            if(!in_array($primary,$this->primary)){
-                $primaryChanged = true;
-                break;
-            }
-        }
-
-        if($primaryChanged){
-            $sql .= "ALTER TABLE {$this->table} DROP PRIMARY KEY,ADD PRIMARY KEY(".implode(",",$this->primary).");";
-        }
-
-        $tableInformation = $this->getTableInformation();
-
-        if(isset($tableInformation[0])){
-
-            if($this->engine && $tableInformation[0]->ENGINE != $this->engine)
-                $sql .= "ALTER TABLE {$this->table} ENGINE = {$this->engine};";
-
-            if($this->collate && $tableInformation[0]->TABLE_COLLATION != $this->collate)
-                $sql .= "ALTER TABLE {$this->table} COLLATE = {$this->collate};";
-
-            if($this->comment && $tableInformation[0]->TABLE_COMMENT != $this->comment)
-                $sql .= "ALTER TABLE {$this->table} COMMENT = '{$this->comment}';";
-        }
-
-        if($this->indexs){
-            $indexInformation = $this->getIndexInformation();
-            if($indexInformation){
-
-                $changed = [];
-                foreach ($indexInformation as $indexDb){
-                    if(!in_array($indexDb,array_keys($this->indexs))){
-                        $sql .= "ALTER TABLE {$this->table} DROP INDEX {$indexDb};";
-                        continue;
-                    }
-
-                    if(in_array($indexDb,array_keys($this->indexs))){
-                        $columns = $this->getIndexColumns($indexDb);
-                        if(count($columns)){
-                            foreach ($this->indexs[$indexDb]["columns"] as $column){
-                                if(!in_array($column,$columns)){
-                                    $changed[] = $indexDb;
-                                    $sql .= "ALTER TABLE {$this->table} DROP INDEX {$indexDb};";
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if($changed){
-                    $sql .= "SET FOREIGN_KEY_CHECKS = 0;";
-                    foreach ($changed as $index){
-                        $sql .= $this->indexs[$index]["sql"];
-                    }
-                    $sql .= "SET FOREIGN_KEY_CHECKS = 1;";
-                }
-                else{
-                    foreach (array_keys($this->indexs) as $index) {
-                        if(!in_array($index,$indexInformation))
-                            $sql .= $this->indexs[$index]["sql"];
-                    }
-                }
-
-            }else{
-                foreach ($this->indexs as $index) {
-                    $sql .= $index["sql"];
-                }
-            }
-        }
-
-        // Gerenciar constraints customizadas
-        if ($this->constraints) {
-            $currentConstraints = $this->getConstraintInformation();
+            // Extrai o schema atual da definição da tabela
+            $currentSchema = $this->schemaExtractor->extractTableSchema($this);
             
-            // Remove constraints que não existem mais
-            foreach ($currentConstraints as $constraintName) {
-                if (!array_key_exists($constraintName, $this->constraints)) {
-                    $sql .= "ALTER TABLE {$this->table} DROP CONSTRAINT {$constraintName};";
-                }
+            // Compara com o schema salvo e gera comandos SQL
+            $sqlCommands = $this->schemaComparator->compareAndGenerateSQL($this->table, $currentSchema);
+            
+            // Executa os comandos SQL gerados
+            if (!empty($sqlCommands)) {
+                $this->executeSqlCommands($sqlCommands);
             }
             
-            // Adiciona ou atualiza constraints
-            foreach ($this->constraints as $constraintName => $constraint) {
-                if (!in_array($constraintName, $currentConstraints)) {
-                    $sql .= $constraint["sql"];
+            // Atualiza o schema salvo
+            $this->schemaTracker->saveTableSchema(
+                $this->table,
+                $currentSchema['table'],
+                $currentSchema['columns'],
+                $currentSchema['indexes'],
+                $currentSchema['constraints'],
+                $currentSchema['foreign_keys']
+            );
+            
+        } catch (Exception $e) {
+            throw new Exception("Erro ao atualizar tabela {$this->table}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Executa uma lista de comandos SQL
+     */
+    private function executeSqlCommands(array $sqlCommands): void
+    {
+        foreach ($sqlCommands as $sql) {
+            if (trim($sql)) {
+                try {
+                    $this->pdo->exec($sql);
+                } catch (\PDOException $e) {
+                    throw new Exception("Erro ao executar SQL: {$sql}. Erro: " . $e->getMessage());
                 }
             }
-        }
-
-        if($sql){
-            $this->pdo->exec($sql);
         }
     }
 
@@ -517,126 +439,182 @@ class TableMysql implements Table
     {
         return $this->columns;
     }
-    
+
+    public function getEngine(): string
+    {
+        return $this->engine ?: 'InnoDB';
+    }
+
+    public function getCollation(): string
+    {
+        return $this->collate ?: 'utf8mb4_general_ci';
+    }
+
+    public function getComment(): string
+    {
+        return $this->comment ?: '';
+    }
+
+    public function getIndexes(): array
+    {
+        return $this->indexs;
+    }
+
+    public function getConstraints(): array
+    {
+        return $this->constraints;
+    }
+
     public function exists():bool
     {
-        $sql = $this->pdo->prepare("SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table LIMIT 1");
-        
-        $sql->bindParam(':db', $this->dbname);
-        $sql->bindParam(':table', $this->table);
-        $sql->execute();
-
-        return $sql->rowCount() > 0;   
+        return $this->schemaReader->tableExists($this->table);
     }
 
     private function getColumnsTable()
     {
-        $sql = $this->pdo->prepare("SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,COLUMN_KEY,IS_NULLABLE,COLUMN_DEFAULT,COLUMN_COMMENT FROM information_schema.columns WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table");
-       
-        $sql->bindParam(':db', $this->dbname);
-        $sql->bindParam(':table', $this->table);
-        $sql->execute();
+        // Verifica se as tabelas de rastreamento existem
+        if (!$this->schemaReader->trackingTablesExist()) {
+            // Fallback para information_schema se as tabelas de rastreamento não existirem
+            $sql = $this->pdo->prepare("SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,COLUMN_KEY,IS_NULLABLE,COLUMN_DEFAULT,COLUMN_COMMENT FROM information_schema.columns WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table");
+           
+            $sql->bindParam(':db', $this->dbname);
+            $sql->bindParam(':table', $this->table);
+            $sql->execute();
 
-        $rows = [];
+            $rows = [];
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_ASSOC);
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            return $rows;
         }
 
-        return $rows;   
+        return $this->schemaReader->getColumnsTableCompatible($this->table);
     }
 
     private function getTableInformation()
     {
-        $sql = $this->pdo->prepare("SELECT ENGINE,TABLE_COLLATION,AUTO_INCREMENT,TABLE_COMMENT FROM information_schema.tables WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table LIMIT 1");
-       
-        $sql->bindParam(':db', $this->dbname);
-        $sql->bindParam(':table', $this->table);
-        $sql->execute();
+        // Verifica se as tabelas de rastreamento existem
+        if (!$this->schemaReader->trackingTablesExist()) {
+            // Fallback para information_schema se as tabelas de rastreamento não existirem
+            $sql = $this->pdo->prepare("SELECT ENGINE,TABLE_COLLATION,AUTO_INCREMENT,TABLE_COMMENT FROM information_schema.tables WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table LIMIT 1");
+           
+            $sql->bindParam(':db', $this->dbname);
+            $sql->bindParam(':table', $this->table);
+            $sql->execute();
 
-        $rows = [];
+            $rows = [];
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_CLASS, 'stdClass');
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_CLASS, 'stdClass');
+            }
+
+            return $rows;
         }
 
-        return $rows;   
+        return $this->schemaReader->getTableInformationCompatible($this->table);
     }
 
     private function getIndexInformation()
     {
-        $sql = $this->pdo->prepare("SELECT INDEX_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table GROUP BY INDEX_NAME HAVING COUNT(INDEX_NAME) > 1");
-       
-        $sql->bindParam(':db', $this->dbname);
-        $sql->bindParam(':table', $this->table);
-        $sql->execute();
+        // Verifica se as tabelas de rastreamento existem
+        if (!$this->schemaReader->trackingTablesExist()) {
+            // Fallback para information_schema se as tabelas de rastreamento não existirem
+            $sql = $this->pdo->prepare("SELECT INDEX_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table GROUP BY INDEX_NAME HAVING COUNT(INDEX_NAME) > 1");
+           
+            $sql->bindParam(':db', $this->dbname);
+            $sql->bindParam(':table', $this->table);
+            $sql->execute();
 
-        $rows = [];
+            $rows = [];
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            }
+
+            return $rows;
         }
 
-        return $rows;   
+        return $this->schemaReader->getIndexNames($this->table);
     }
 
     private function getIndexColumns($indexName)
     {
-        $sql = $this->pdo->prepare("SELECT COLUMN_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND INDEX_NAME = :indexName;");
-       
-        $sql->bindParam(':db', $this->dbname);
-        $sql->bindParam(':table', $this->table);
-        $sql->bindParam(':indexName', $indexName);
-        $sql->execute();
+        // Verifica se as tabelas de rastreamento existem
+        if (!$this->schemaReader->trackingTablesExist()) {
+            // Fallback para information_schema se as tabelas de rastreamento não existirem
+            $sql = $this->pdo->prepare("SELECT COLUMN_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND INDEX_NAME = :indexName;");
+           
+            $sql->bindParam(':db', $this->dbname);
+            $sql->bindParam(':table', $this->table);
+            $sql->bindParam(':indexName', $indexName);
+            $sql->execute();
 
-        $rows = [];
+            $rows = [];
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            }
+
+            return $rows;
         }
 
-        return $rows;   
+        return $this->schemaReader->getIndexColumns($this->table, $indexName);
     }
 
     private function getForeingKeyName($column){
-        $sql = $this->pdo->prepare("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1");
-       
-        $sql->bindParam(':db', $this->dbname);
-        $sql->bindParam(':table', $this->table);
-        $sql->bindParam(':column', $column);
-        $sql->execute();
+        // Verifica se as tabelas de rastreamento existem
+        if (!$this->schemaReader->trackingTablesExist()) {
+            // Fallback para information_schema se as tabelas de rastreamento não existirem
+            $sql = $this->pdo->prepare("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1");
+           
+            $sql->bindParam(':db', $this->dbname);
+            $sql->bindParam(':table', $this->table);
+            $sql->bindParam(':column', $column);
+            $sql->execute();
 
-        $rows = [];
+            $rows = [];
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            }
+
+            return $rows;
         }
 
-        return $rows;   
+        $fkName = $this->schemaReader->getForeignKeyName($this->table, $column);
+        return $fkName ? [$fkName] : [];
     }
     
     private function getConstraintInformation()
     {
-        $sql = $this->pdo->prepare("
-            SELECT CONSTRAINT_NAME 
-            FROM information_schema.TABLE_CONSTRAINTS 
-            WHERE TABLE_SCHEMA = :db 
-            AND TABLE_NAME = :table 
-            AND CONSTRAINT_TYPE IN ('UNIQUE', 'CHECK')
-            AND CONSTRAINT_NAME != 'PRIMARY'
-        ");
-       
-        $sql->bindParam(':db', $this->dbname);
-        $sql->bindParam(':table', $this->table);
-        $sql->execute();
+        // Verifica se as tabelas de rastreamento existem
+        if (!$this->schemaReader->trackingTablesExist()) {
+            // Fallback para information_schema se as tabelas de rastreamento não existirem
+            $sql = $this->pdo->prepare("
+                SELECT CONSTRAINT_NAME 
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE TABLE_SCHEMA = :db 
+                AND TABLE_NAME = :table 
+                AND CONSTRAINT_TYPE IN ('UNIQUE', 'CHECK')
+                AND CONSTRAINT_NAME != 'PRIMARY'
+            ");
+           
+            $sql->bindParam(':db', $this->dbname);
+            $sql->bindParam(':table', $this->table);
+            $sql->execute();
 
-        $rows = [];
+            $rows = [];
 
-        if ($sql->rowCount() > 0) {
-            $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            if ($sql->rowCount() > 0) {
+                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
+            }
+
+            return $rows;
         }
 
-        return $rows;   
+        return $this->schemaReader->getConstraintNames($this->table, ['UNIQUE', 'CHECK']);
     }
 
     private function validateName($name) {

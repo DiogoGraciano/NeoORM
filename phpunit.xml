@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit bootstrap="vendor/autoload.php"
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
          colors="true"
-         verbose="true"
-         stopOnFailure="false">
+         cacheDirectory=".phpunit.cache"
+         testdox="true">
     <testsuites>
-        <testsuite name="NeoORMTest">
+        <testsuite name="NeoORM Tests">
             <directory>tests</directory>
         </testsuite>
     </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
     <php>
-        <env name="DRIVER" value="pgsql"/>
-        <env name="DBHOST" value="postgres"/>
-        <env name="DBPORT" value="5432"/>
-        <env name="DBNAME" value="neoorm_test"/>
-        <env name="DBCHARSET" value="utf8mb4"/>
-        <env name="DBUSER" value="postgres"/>
-        <env name="DBPASSWORD" value="postgres"/>
-        <env name="PATH_MODEL" value="./tests/app/models"/>
-        <env name="MODEL_NAMESPACE" value="Tests\App\Models"/>
+        <env name="DB_DRIVER" value="mysql"/>
+        <env name="DB_HOST" value="localhost"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_NAME" value="test_neoorm"/>
+        <env name="DB_USER" value="root"/>
+        <env name="DB_PASSWORD" value=""/>
+        <env name="DB_CHARSET" value="utf8mb4"/>
     </php>
 </phpunit>

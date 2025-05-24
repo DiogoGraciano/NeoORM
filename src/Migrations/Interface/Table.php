@@ -34,4 +34,14 @@ interface Table
     
     public function exists():bool;
 
+    public function getEngine(): ?string;
+
+    public function getCollation(): ?string;
+
+    public function getComment(): ?string;
+
+    public function getIndexes(): array;
+
+    public function getConstraints(): array;
+
 }
