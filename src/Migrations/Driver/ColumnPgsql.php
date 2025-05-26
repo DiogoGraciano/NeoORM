@@ -82,18 +82,17 @@ class ColumnPgsql implements Column
 
             $this->column = new StdClass;
 
-            if($size && $this->validateSize($type,$size)){
-                $this->column->type = $type."({$size})";
+            if($size && !$this->validateSize($type,$size)){
+                throw new Exception($name.": Tamanho é inválido");
             }
-            else 
-                $this->column->type = $type;
-
+            
             $name = strtolower(trim($name));
 
             if(!$this->validateName($name)){
                 throw new Exception($name.": Nome é invalido");
             }
 
+            $this->column->type = $type;
             $this->column->name = $name;
             $this->column->size = $size;
             $this->column->primary = "";
@@ -126,7 +125,7 @@ class ColumnPgsql implements Column
 
     public function setDefault(string|int|float|null $value = null,bool $is_constant = false)
     {
-        if($is_constant)
+        if($is_constant && !is_null($value))
             $this->column->default = "DEFAULT ".$value;
         elseif(is_string($value))
             $this->column->default = "DEFAULT '".$value."'";

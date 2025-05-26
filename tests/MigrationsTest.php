@@ -9,10 +9,9 @@ use Diogodg\Neoorm\Migrations\SchemaTracker;
 use Diogodg\Neoorm\Migrations\SchemaComparator;
 use Diogodg\Neoorm\Migrations\SchemaExtractor;
 use Diogodg\Neoorm\Migrations\SchemaReader;
-use Diogodg\Neoorm\Migrations\Driver\TableMysql;
-use Diogodg\Neoorm\Migrations\Driver\TablePgsql;
 use Diogodg\Neoorm\Migrations\Column;
 use Diogodg\Neoorm\Migrations\Migrate;
+use Diogodg\Neoorm\Migrations\Table;
 use Exception;
 
 class MigrationsTest extends TestCase
@@ -58,58 +57,17 @@ class MigrationsTest extends TestCase
     }
 
     /**
-     * Testa a criação de uma tabela MySQL com rastreamento
-     */
-    public function testCreateMysqlTableWithTracking(): void
-    {
-        if (Config::getDriver() !== 'mysql') {
-            $this->markTestSkipped('Teste específico para MySQL');
-        }
-
-        $tableName = 'test_mysql_table';
-        $this->cleanupTestTable($tableName);
-
-        // Cria uma tabela de teste
-        $table = new TableMysql($tableName, 'InnoDB', 'utf8mb4_general_ci', 'Tabela de teste');
-        
-        $table->addColumn((new Column('id', 'INT'))->isPrimary()->setDefault(null, true))
-              ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull())
-              ->addColumn((new Column('email', 'VARCHAR', '255'))->isUnique())
-              ->addColumn((new Column('created_at', 'TIMESTAMP'))->setDefault('CURRENT_TIMESTAMP', true));
-
-        $table->isAutoIncrement();
-        $table->create();
-
-        // Verifica se a tabela existe
-        $this->assertTrue($table->exists());
-        
-        // Verifica se foi salva no rastreamento
-        $this->assertTrue($this->schemaTracker->tableExistsInTracking($tableName));
-        
-        // Verifica o schema salvo
-        $savedSchema = $this->schemaTracker->getSavedTableSchema($tableName);
-        $this->assertNotNull($savedSchema['table']);
-        $this->assertCount(4, $savedSchema['columns']);
-        
-        $this->cleanupTestTable($tableName);
-    }
-
-    /**
      * Testa a criação de uma tabela PostgreSQL com rastreamento
      */
-    public function testCreatePgsqlTableWithTracking(): void
+    public function testCreateTableWithTracking(): void
     {
-        if (Config::getDriver() !== 'pgsql') {
-            $this->markTestSkipped('Teste específico para PostgreSQL');
-        }
-
         $tableName = 'test_pgsql_table';
         $this->cleanupTestTable($tableName);
 
         // Cria uma tabela de teste
-        $table = new TablePgsql($tableName);
+        $table = new Table($tableName);
         
-        $table->addColumn((new Column('id', 'SERIAL'))->isPrimary())
+        $table->addColumn((new Column('id', 'INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull())
               ->addColumn((new Column('email', 'VARCHAR', '255'))->isUnique())
               ->addColumn((new Column('created_at', 'TIMESTAMP'))->setDefault('CURRENT_TIMESTAMP', true));
@@ -139,28 +97,23 @@ class MigrationsTest extends TestCase
         $this->cleanupTestTable($tableName);
 
         // Cria tabela inicial
-        $tableClass = Config::getDriver() === 'mysql' ? TableMysql::class : TablePgsql::class;
-        $table = new $tableClass($tableName);
+        $table = new Table($tableName);
         
-        $table->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $table->addColumn((new Column('id', 'INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull());
 
-        if (Config::getDriver() === 'mysql') {
-            $table->isAutoIncrement();
-        }
+        $table->isAutoIncrement();
 
         $table->create();
 
         // Modifica a tabela adicionando uma nova coluna
-        $table = new $tableClass($tableName);
-        $table->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $table = new Table($tableName);
+        $table->addColumn((new Column('id', 'INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull())
               ->addColumn((new Column('email', 'VARCHAR', '255'))->isUnique())
               ->addColumn((new Column('age', 'INT'))->setDefault(null));
 
-        if (Config::getDriver() === 'mysql') {
-            $table->isAutoIncrement();
-        }
+        $table->isAutoIncrement();
 
         $table->update();
 
@@ -184,17 +137,14 @@ class MigrationsTest extends TestCase
         $tableName = 'test_extraction_table';
         $this->cleanupTestTable($tableName);
 
-        $tableClass = Config::getDriver() === 'mysql' ? TableMysql::class : TablePgsql::class;
-        $table = new $tableClass($tableName);
+        $table = new Table($tableName);
         
-        $table->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $table->addColumn((new Column('id','INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull())
               ->addColumn((new Column('email', 'VARCHAR', '255'))->isUnique());
 
-        if (Config::getDriver() === 'mysql') {
-            $table->isAutoIncrement();
-        }
-
+        $table->isAutoIncrement();
+    
         // Extrai o schema
         $extractedSchema = $this->schemaExtractor->extractTableSchema($table);
 
@@ -224,29 +174,23 @@ class MigrationsTest extends TestCase
         $tableName = 'test_comparison_table';
         $this->cleanupTestTable($tableName);
 
-        $tableClass = Config::getDriver() === 'mysql' ? TableMysql::class : TablePgsql::class;
+        $table = new Table($tableName);
         
         // Cria tabela inicial
-        $table = new $tableClass($tableName);
-        $table->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $table->addColumn((new Column('id','INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull());
 
-        if (Config::getDriver() === 'mysql') {
-            $table->isAutoIncrement();
-        }
-
+        $table->isAutoIncrement();
         $table->create();
 
         // Modifica a definição da tabela
-        $table = new $tableClass($tableName);
-        $table->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $table = new Table($tableName);
+        $table->addColumn((new Column('id', 'INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull())
               ->addColumn((new Column('email', 'VARCHAR', '255'))->isUnique())
               ->addColumn((new Column('status', 'VARCHAR', '50'))->setDefault('active'));
 
-        if (Config::getDriver() === 'mysql') {
-            $table->isAutoIncrement();
-        }
+        $table->isAutoIncrement();
 
         // Extrai o novo schema
         $currentSchema = $this->schemaExtractor->extractTableSchema($table);
@@ -272,18 +216,15 @@ class MigrationsTest extends TestCase
         $tableName = 'test_indexes_table';
         $this->cleanupTestTable($tableName);
 
-        $tableClass = Config::getDriver() === 'mysql' ? TableMysql::class : TablePgsql::class;
-        $table = new $tableClass($tableName);
+        $table = new Table($tableName);
         
-        $table->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $table->addColumn((new Column('id', 'INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull())
               ->addColumn((new Column('email', 'VARCHAR', '255'))->isUnique())
               ->addColumn((new Column('category', 'VARCHAR', '100')))
               ->addColumn((new Column('status', 'VARCHAR', '50')));
 
-        if (Config::getDriver() === 'mysql') {
-            $table->isAutoIncrement();
-        }
+        $table->isAutoIncrement();
 
         // Adiciona índice composto
         $table->addIndex('idx_category_status', ['category', 'status']);
@@ -316,29 +257,21 @@ class MigrationsTest extends TestCase
         $this->cleanupTestTable($childTable);
         $this->cleanupTestTable($parentTable);
 
-        $tableClass = Config::getDriver() === 'mysql' ? TableMysql::class : TablePgsql::class;
+        $table = new Table($parentTable);
         
         // Cria tabela pai
-        $parent = new $tableClass($parentTable);
-        $parent->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $parent = new Table($parentTable);
+        $parent->addColumn((new Column('id','INT'))->isPrimary())
                ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull());
-
-        if (Config::getDriver() === 'mysql') {
-            $parent->isAutoIncrement();
-        }
-
+        $parent->isAutoIncrement();
         $parent->create();
 
         // Cria tabela filha com foreign key
-        $child = new $tableClass($childTable);
-        $child->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $child = new Table($childTable);
+        $child->addColumn((new Column('id','INT'))->isPrimary())
               ->addColumn((new Column('parent_id', 'INT'))->isNotNull())
               ->addColumn((new Column('description', 'TEXT')));
-
-        if (Config::getDriver() === 'mysql') {
-            $child->isAutoIncrement();
-        }
-
+        $child->isAutoIncrement();
         $child->addForeignKey($parentTable, 'parent_id', 'id', 'CASCADE');
         $child->create();
 
@@ -382,16 +315,13 @@ class MigrationsTest extends TestCase
     {
         $tableName = 'test_remove_table';
         $this->cleanupTestTable($tableName);
-
-        $tableClass = Config::getDriver() === 'mysql' ? TableMysql::class : TablePgsql::class;
-        $table = new $tableClass($tableName);
         
-        $table->addColumn((new Column('id', Config::getDriver() === 'mysql' ? 'INT' : 'SERIAL'))->isPrimary())
+        $table = new Table($tableName);
+        
+        $table->addColumn((new Column('id','INT'))->isPrimary())
               ->addColumn((new Column('name', 'VARCHAR', '255'))->isNotNull());
 
-        if (Config::getDriver() === 'mysql') {
-            $table->isAutoIncrement();
-        }
+        $table->isAutoIncrement();
 
         $table->create();
 

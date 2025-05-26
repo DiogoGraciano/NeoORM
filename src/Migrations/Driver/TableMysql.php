@@ -177,12 +177,19 @@ class TableMysql implements Table
     {
         $column = $column->getColumn();
 
-        $column->columnSql = ["{$column->name} {$column->type} {$column->null} {$column->default} {$column->comment}",$column->unique," "];
+        if($column->size){
+            $type = $column->type."(".$column->size.")";
+        }
+        else{
+            $type = $column->type;
+        }
+
+        $column->columnSql = ["`{$column->name}` {$type} {$column->null} {$column->default} {$column->comment}",$column->unique," "];
 
         $this->columns[$column->name] = $column;
 
         if($column->primary){
-            $this->primary[] = $column->name;
+            $this->primary[] = "`{$column->name}`";
             $this->columns = array_reverse($this->columns,true);
         }
 
@@ -468,153 +475,6 @@ class TableMysql implements Table
     public function exists():bool
     {
         return $this->schemaReader->tableExists($this->table);
-    }
-
-    private function getColumnsTable()
-    {
-        // Verifica se as tabelas de rastreamento existem
-        if (!$this->schemaReader->trackingTablesExist()) {
-            // Fallback para information_schema se as tabelas de rastreamento não existirem
-            $sql = $this->pdo->prepare("SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,COLUMN_KEY,IS_NULLABLE,COLUMN_DEFAULT,COLUMN_COMMENT FROM information_schema.columns WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table");
-           
-            $sql->bindParam(':db', $this->dbname);
-            $sql->bindParam(':table', $this->table);
-            $sql->execute();
-
-            $rows = [];
-
-            if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_ASSOC);
-            }
-
-            return $rows;
-        }
-
-        return $this->schemaReader->getColumnsTableCompatible($this->table);
-    }
-
-    private function getTableInformation()
-    {
-        // Verifica se as tabelas de rastreamento existem
-        if (!$this->schemaReader->trackingTablesExist()) {
-            // Fallback para information_schema se as tabelas de rastreamento não existirem
-            $sql = $this->pdo->prepare("SELECT ENGINE,TABLE_COLLATION,AUTO_INCREMENT,TABLE_COMMENT FROM information_schema.tables WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table LIMIT 1");
-           
-            $sql->bindParam(':db', $this->dbname);
-            $sql->bindParam(':table', $this->table);
-            $sql->execute();
-
-            $rows = [];
-
-            if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_CLASS, 'stdClass');
-            }
-
-            return $rows;
-        }
-
-        return $this->schemaReader->getTableInformationCompatible($this->table);
-    }
-
-    private function getIndexInformation()
-    {
-        // Verifica se as tabelas de rastreamento existem
-        if (!$this->schemaReader->trackingTablesExist()) {
-            // Fallback para information_schema se as tabelas de rastreamento não existirem
-            $sql = $this->pdo->prepare("SELECT INDEX_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table GROUP BY INDEX_NAME HAVING COUNT(INDEX_NAME) > 1");
-           
-            $sql->bindParam(':db', $this->dbname);
-            $sql->bindParam(':table', $this->table);
-            $sql->execute();
-
-            $rows = [];
-
-            if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
-            }
-
-            return $rows;
-        }
-
-        return $this->schemaReader->getIndexNames($this->table);
-    }
-
-    private function getIndexColumns($indexName)
-    {
-        // Verifica se as tabelas de rastreamento existem
-        if (!$this->schemaReader->trackingTablesExist()) {
-            // Fallback para information_schema se as tabelas de rastreamento não existirem
-            $sql = $this->pdo->prepare("SELECT COLUMN_NAME FROM information_schema.statistics  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND INDEX_NAME = :indexName;");
-           
-            $sql->bindParam(':db', $this->dbname);
-            $sql->bindParam(':table', $this->table);
-            $sql->bindParam(':indexName', $indexName);
-            $sql->execute();
-
-            $rows = [];
-
-            if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
-            }
-
-            return $rows;
-        }
-
-        return $this->schemaReader->getIndexColumns($this->table, $indexName);
-    }
-
-    private function getForeingKeyName($column){
-        // Verifica se as tabelas de rastreamento existem
-        if (!$this->schemaReader->trackingTablesExist()) {
-            // Fallback para information_schema se as tabelas de rastreamento não existirem
-            $sql = $this->pdo->prepare("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1");
-           
-            $sql->bindParam(':db', $this->dbname);
-            $sql->bindParam(':table', $this->table);
-            $sql->bindParam(':column', $column);
-            $sql->execute();
-
-            $rows = [];
-
-            if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
-            }
-
-            return $rows;
-        }
-
-        $fkName = $this->schemaReader->getForeignKeyName($this->table, $column);
-        return $fkName ? [$fkName] : [];
-    }
-    
-    private function getConstraintInformation()
-    {
-        // Verifica se as tabelas de rastreamento existem
-        if (!$this->schemaReader->trackingTablesExist()) {
-            // Fallback para information_schema se as tabelas de rastreamento não existirem
-            $sql = $this->pdo->prepare("
-                SELECT CONSTRAINT_NAME 
-                FROM information_schema.TABLE_CONSTRAINTS 
-                WHERE TABLE_SCHEMA = :db 
-                AND TABLE_NAME = :table 
-                AND CONSTRAINT_TYPE IN ('UNIQUE', 'CHECK')
-                AND CONSTRAINT_NAME != 'PRIMARY'
-            ");
-           
-            $sql->bindParam(':db', $this->dbname);
-            $sql->bindParam(':table', $this->table);
-            $sql->execute();
-
-            $rows = [];
-
-            if ($sql->rowCount() > 0) {
-                $rows = $sql->fetchAll(\PDO::FETCH_COLUMN);
-            }
-
-            return $rows;
-        }
-
-        return $this->schemaReader->getConstraintNames($this->table, ['UNIQUE', 'CHECK']);
     }
 
     private function validateName($name) {

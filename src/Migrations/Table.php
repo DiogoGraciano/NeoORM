@@ -94,4 +94,34 @@ class Table implements TableInterface
     {
         return $this->table->exists();
     }
+
+    public function getEngine():?string
+    {
+        return $this->table->getEngine();
+    }
+
+    public function getCollation():?string      
+    {   
+        return $this->table->getCollation();
+    }
+
+    public function getComment():?string
+    {
+        return $this->table->getComment();
+    }
+
+    public function getColumnsSql():array
+    {
+        return $this->table->getColumnsSql();
+    }
+
+    public function getIndexes():array
+    {
+        return $this->table->getIndexes();
+    }
+
+    public function getConstraints():array
+    {
+        return $this->table->getConstraints();
+    }
 }

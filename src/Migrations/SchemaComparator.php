@@ -135,6 +135,14 @@ class SchemaComparator
             'comment' => 'comment'
         ];
 
+        if (isset($current['primary']) && $current['primary']) {
+            $current['nullable'] = false;
+        }
+
+        if(Config::getDriver() === 'pgsql') {
+            unset($fieldsToCompare['comment']);
+        }
+
         foreach ($fieldsToCompare as $currentField => $savedField) {
             $currentValue = $current[$currentField] ?? null;
             $savedValue = $saved[$savedField] ?? null;
@@ -174,9 +182,9 @@ class SchemaComparator
     private function generateModifyColumnSQL(string $tableName, array $column): string
     {
         $tableName = $this->escapeTableName($tableName);
-        $columnDef = $this->buildColumnDefinition($column);
-
+        
         if ($this->driver === 'mysql') {
+            $columnDef = $this->buildColumnDefinition($column);
             return "ALTER TABLE {$tableName} MODIFY COLUMN {$columnDef}";
         } else {
             // PostgreSQL requer comandos separados para diferentes alterações
@@ -185,7 +193,11 @@ class SchemaComparator
             
             $commands[] = "ALTER TABLE {$tableName} ALTER COLUMN {$columnName} TYPE {$column['type']}";
             
-            if (isset($column['nullable'])) {
+            if (isset($column['primary']) && $column['primary']) {
+                $commands[] = "ALTER TABLE {$tableName} ADD PRIMARY KEY ({$columnName})";
+            }
+
+            if (isset($column['nullable']) && !(isset($column['primary']) && $column['primary'])) {
                 if ($column['nullable']) {
                     $commands[] = "ALTER TABLE {$tableName} ALTER COLUMN {$columnName} DROP NOT NULL";
                 } else {

@@ -55,7 +55,7 @@ class NeoOrmTest extends TestCase
         $state->name = 'Test State';
         $state->abbreviation = 'TS';
         $state->country = $country->id;
-        $state->ibge = 99;
+        $state->ibge = random_int(1, 99999);
         $state->area_code = '99';
         $state->store();
 
@@ -105,6 +105,26 @@ class NeoOrmTest extends TestCase
         $appointment->end_date = '2025-04-16 11:00:00';
         $appointment->status = 'confirmed';
         $appointment->store();
+    }
+
+    /**
+     * Limpa todas as tabelas de teste
+     */
+    protected static function clearTables(): void
+    {
+        $pdo = Connection::getConnection();
+        
+        $pdo->exec("DROP TABLE IF EXISTS schedule_user");
+        $pdo->exec("DROP TABLE IF EXISTS appointment");
+        $pdo->exec("DROP TABLE IF EXISTS schedule_employee");
+        $pdo->exec("DROP TABLE IF EXISTS schedule");
+        $pdo->exec("DROP TABLE IF EXISTS employee");
+        $pdo->exec("DROP TABLE IF EXISTS users");
+        $pdo->exec("DROP TABLE IF EXISTS city");
+        $pdo->exec("DROP TABLE IF EXISTS state");
+        $pdo->exec("DROP TABLE IF EXISTS country");
+        $pdo->exec("DROP TABLE IF EXISTS client");
+        $pdo->exec("DROP TABLE IF EXISTS users");
     }
 
     /**
@@ -448,7 +468,7 @@ class NeoOrmTest extends TestCase
             Connection::rollBack();
 
             // Verifique se o número de agendas é o mesmo de antes
-            $afterCount = count((new Schedule())->getAll());
+            $afterCount = (new Schedule())->count();
             $this->assertEquals($initialCount, $afterCount);
 
             // Verifique se a agenda não foi salva
@@ -502,7 +522,7 @@ class NeoOrmTest extends TestCase
         $db = new Employee();
         
         // Teste página 1 com limite padrão (15)
-        $result = $db->paginate(1);
+        $result = $db->paginate(1)->selectAll();
         $this->assertIsArray($result);
         $this->assertNotEmpty($result);
         $this->assertCount(15, $result);
@@ -514,7 +534,7 @@ class NeoOrmTest extends TestCase
         $this->assertEquals(2, $db->getLastPage());
 
         // Teste página 2 com limite personalizado (10)
-        $result = $db->paginate(2, 10);
+        $result = $db->paginate(2, 10)->selectAll();
         $this->assertIsArray($result);
         $this->assertNotEmpty($result);
         $this->assertCount(10, $result);
@@ -526,18 +546,26 @@ class NeoOrmTest extends TestCase
         $this->assertEquals(3, $db->getLastPage());
 
         // Teste página inválida (deve retornar página 1)
-        $result = $db->paginate(0, 10);
+        $result = $db->paginate(0, 10)->selectAll();
         $this->assertEquals(1, $db->getCurrentPage());
         $this->assertEquals(0, $db->getOffset());
 
         // Teste limite inválido (deve usar limite padrão 15)
-        $result = $db->paginate(1, 0);
+        $result = $db->paginate(1, 0)->selectAll();
         $this->assertEquals(15, $db->getLimit());
 
         // Teste última página
-        $result = $db->paginate(3, 10);
+        $result = $db->paginate(3, 10)->selectAll();
         $this->assertEquals(3, $db->getCurrentPage());
         $this->assertEquals(3, $db->getNextPage()); // Não deve avançar além da última página
         $this->assertEquals(2, $db->getPreviousPage());
+    }
+
+    /**
+     * Teste da função de limpeza de tabelas
+     */
+    public static function tearDownAfterClass(): void
+    {
+        self::clearTables();
     }
 }

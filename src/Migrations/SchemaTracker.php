@@ -55,7 +55,7 @@ class SchemaTracker
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
                 `table_name` VARCHAR(255) NOT NULL UNIQUE,
                 `engine` VARCHAR(50) DEFAULT 'InnoDB',
-                `collation` VARCHAR(100) DEFAULT 'utf8mb4_general_ci',
+                `collation_name` VARCHAR(100) DEFAULT 'utf8mb4_general_ci',
                 `comment` TEXT,
                 `auto_increment` BOOLEAN DEFAULT FALSE,
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -67,7 +67,7 @@ class SchemaTracker
                 id SERIAL PRIMARY KEY,
                 table_name VARCHAR(255) NOT NULL UNIQUE,
                 engine VARCHAR(50) DEFAULT 'InnoDB',
-                collation VARCHAR(100) DEFAULT 'utf8mb4_general_ci',
+                collation_name VARCHAR(100) DEFAULT 'utf8mb4_general_ci',
                 comment TEXT,
                 auto_increment BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -269,10 +269,10 @@ class SchemaTracker
         $schemaHash = $this->generateSchemaHash($tableData);
         
         $sql = "INSERT INTO " . $this->getTableName('_schema_tables') . " 
-                (table_name, engine, collation, comment, auto_increment, schema_hash) 
+                (table_name, engine, collation_name, comment, auto_increment, schema_hash) 
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON " . ($this->driver === 'mysql' ? 'DUPLICATE KEY UPDATE' : 'CONFLICT (table_name) DO UPDATE SET') . "
-                engine = ?, collation = ?, comment = ?, auto_increment = ?, schema_hash = ?, updated_at = " . 
+                engine = ?, collation_name = ?, comment = ?, auto_increment = ?, schema_hash = ?, updated_at = " . 
                 ($this->driver === 'mysql' ? 'CURRENT_TIMESTAMP' : 'CURRENT_TIMESTAMP');
         
         $stmt = $this->pdo->prepare($sql);
@@ -281,12 +281,12 @@ class SchemaTracker
             $tableData['engine'] ?? 'InnoDB',
             $tableData['collation'] ?? 'utf8mb4_general_ci',
             $tableData['comment'] ?? '',
-            $tableData['auto_increment'] ?? false,
+            !empty($tableData['auto_increment']) ? 1 : 0,
             $schemaHash,
             $tableData['engine'] ?? 'InnoDB',
             $tableData['collation'] ?? 'utf8mb4_general_ci',
             $tableData['comment'] ?? '',
-            $tableData['auto_increment'] ?? false,
+            !empty($tableData['auto_increment']) ? 1 : 0,
             $schemaHash
         ]);
     }
@@ -307,20 +307,21 @@ class SchemaTracker
             $sql = "INSERT INTO " . $this->getTableName('_schema_columns') . " 
                     (table_name, column_name, data_type, column_size, is_nullable, column_default, 
                      is_primary, is_unique, comment, position) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    VALUES (:table_name, :column_name, :data_type, :column_size, :is_nullable, :column_default, 
+                            :is_primary, :is_unique, :comment, :position)";
             
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([
-                $tableName,
-                $column['name'],
-                $column['type'],
-                $column['size'] ?? null,
-                $column['nullable'] ?? true,
-                $column['default'] ?? null,
-                $column['primary'] ?? false,
-                $column['unique'] ?? false,
-                $column['comment'] ?? '',
-                $position++
+                'table_name' => $tableName,
+                'column_name' => $column['name'],
+                'data_type' => $column['type'],
+                'column_size' => $column['size'] ?: null,
+                'is_nullable' => !empty($column['is_nullable']) ? 1 : 0,
+                'column_default' => $column['default'] ?: null,
+                'is_primary' => !empty($column['primary']) ? 1 : 0,
+                'is_unique' => !empty($column['unique']) ? 1 : 0,
+                'comment' => $column['comment'] ?: null,
+                'position' => $position++
             ]);
         }
     }
@@ -339,14 +340,14 @@ class SchemaTracker
         foreach ($indexes as $indexName => $indexData) {
             $sql = "INSERT INTO " . $this->getTableName('_schema_indexes') . " 
                     (table_name, index_name, columns, is_unique) 
-                    VALUES (?, ?, ?, ?)";
+                    VALUES (:table_name, :index_name, :columns, :is_unique)";
             
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([
-                $tableName,
-                $indexName,
-                json_encode($indexData['columns']),
-                $indexData['unique'] ?? false
+                'table_name' => $tableName,
+                'index_name' => $indexName,
+                'columns' => json_encode($indexData['columns']),
+                'is_unique' => !empty($indexData['unique']) ? 1 : 0
             ]);
         }
     }

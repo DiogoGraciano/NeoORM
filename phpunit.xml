@@ -16,12 +16,14 @@
         </include>
     </source>
     <php>
-        <env name="DB_DRIVER" value="mysql"/>
-        <env name="DB_HOST" value="localhost"/>
-        <env name="DB_PORT" value="3306"/>
-        <env name="DB_NAME" value="test_neoorm"/>
-        <env name="DB_USER" value="root"/>
-        <env name="DB_PASSWORD" value=""/>
-        <env name="DB_CHARSET" value="utf8mb4"/>
+        <env name="DRIVER" value="mysql"/>
+        <env name="DBHOST" value="mysql"/>
+        <env name="DBPORT" value="3306"/>
+        <env name="DBNAME" value="test_neoorm"/>
+        <env name="DBUSER" value="root"/>
+        <env name="DBPASSWORD" value="root"/>
+        <env name="DBCHARSET" value="utf8mb4"/>
+        <env name="PATH_MODEL" value="./tests/app/models"/>
+        <env name="MODEL_NAMESPACE" value="Tests\App\Models"/>
     </php>
 </phpunit>
