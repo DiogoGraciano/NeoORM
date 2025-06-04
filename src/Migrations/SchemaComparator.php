@@ -62,8 +62,8 @@ class SchemaComparator
                 $sqlCommands[] = "ALTER TABLE `{$tableName}` ENGINE = " . ($current['engine'] ?? 'InnoDB');
             }
 
-            if (($current['collation'] ?? 'utf8mb4_general_ci') !== $saved['collation']) {
-                $sqlCommands[] = "ALTER TABLE `{$tableName}` COLLATE = " . ($current['collation'] ?? 'utf8mb4_general_ci');
+            if (($current['collation'] ?? 'utf8mb4_general_ci') !== $saved['collation_name']) {
+                $sqlCommands[] = "ALTER TABLE `{$tableName}` COLLATE = " . ($current['collation_name'] ?? 'utf8mb4_general_ci');
             }
 
             if (($current['comment'] ?? '') !== $saved['comment']) {
