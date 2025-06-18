@@ -148,15 +148,26 @@ trait DbFilters
             }
             $inValue = rtrim($inValue, ",") . ")";
 
-            $filter = " " . $operatorCondition->name . " " . $start . $field .
-                      " " . $logicalOperator . " " . $inValue . $end;
+            if ($this->hasHaving) {
+                $filter = " " . $operatorCondition->name . " " . $start . $field .
+                          " " . $logicalOperator . " " . $inValue . $end;
+            } else {
+                $filter = " HAVING " . $start . $field .
+                          " " . $logicalOperator . " " . $inValue . $end;
+            }
             $this->having[] = $filter;
         } else {
-            $filter = " " . $operatorCondition->name . " " . $start . $field .
-                      " " . $logicalOperator . " {$this->setBind($value)} " . $end;
+            if ($this->hasHaving) {
+                $filter = " " . $operatorCondition->name . " " . $start . $field .
+                          " " . $logicalOperator . " {$this->setBind($value)} " . $end;
+            } else {
+                $filter = " HAVING " . $start . $field .
+                          " " . $logicalOperator . " {$this->setBind($value)} " . $end;
+            }
             $this->having[] = $filter;
         }
 
+        $this->hasHaving = true;
         return $this;
     }
 

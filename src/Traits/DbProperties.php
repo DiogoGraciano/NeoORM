@@ -113,4 +113,11 @@ trait DbProperties
      * @var bool
      */
     private bool $hasOrder = false;
+
+    /**
+     * Indica se já foi adicionado algum filtro HAVING.
+     *
+     * @var bool
+     */
+    private bool $hasHaving = false;
 }

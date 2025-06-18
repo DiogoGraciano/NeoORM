@@ -25,6 +25,7 @@ trait DbHelpers{
         $this->filters           = [];
         $this->valuesBind        = [];
         $this->hasOrder          = false;
+        $this->hasHaving         = false;
     }
 
 

@@ -568,4 +568,422 @@ class NeoOrmTest extends TestCase
     {
         self::clearTables();
     }
+
+    /**
+     * Teste de agrupamento simples com GROUP BY
+     */
+    public function testSimpleGroupBy(): void
+    {
+        // Criar alguns funcionários com diferentes usuários para testar agrupamento
+        $users = (new User())->getAll();
+        $userId = $users[0]->id;
+
+        // Criar múltiplos funcionários para o mesmo usuário
+        for ($i = 1; $i <= 3; $i++) {
+            $employee = new Employee();
+            $employee->user_id = $userId;
+            $employee->name = "Group Test Employee {$i}";
+            $employee->tax_id = "12345678{$i}00";
+            $employee->email = "group{$i}@example.com";
+            $employee->phone = "559999999{$i}";
+            $employee->start_time = '08:00:00';
+            $employee->end_time = '18:00:00';
+            $employee->lunch_start = '12:00:00';
+            $employee->lunch_end = '13:00:00';
+            $employee->days = '1,2,3,4,5';
+            $employee->store();
+        }
+
+        $db = new Employee();
+        $result = $db->addGroup('user_id')
+                     ->selectColumns('user_id', new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_employees'));
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        
+        // Verificar se existe pelo menos um grupo com o user_id testado
+        $found = false;
+        foreach ($result as $row) {
+            if ($row->user_id == $userId) {
+                $this->assertGreaterThanOrEqual(3, (int)$row->total_employees);
+                $found = true;
+                break;
+            }
+        }
+        $this->assertTrue($found, "Grupo com user_id {$userId} não foi encontrado");
+    }
+
+    /**
+     * Teste de agrupamento múltiplo com GROUP BY
+     */
+    public function testMultipleGroupBy(): void
+    {
+        // Criar agendamentos em datas diferentes para o mesmo funcionário
+        $employee = (new Employee())->getAll()[0];
+        $user = (new User())->getAll()[0];
+        $schedule = (new Schedule())->getAll()[0];
+
+        $dates = ['2025-04-17', '2025-04-18', '2025-04-17'];
+        $statuses = ['confirmed', 'pending', 'confirmed'];
+
+        for ($i = 0; $i < 3; $i++) {
+            $appointment = new Appointment();
+            $appointment->user_id = $user->id;
+            $appointment->schedule_id = $schedule->id;
+            $appointment->client_id = 1;
+            $appointment->employee_id = $employee->id;
+            $appointment->start_date = $dates[$i] . ' 10:00:00';
+            $appointment->end_date = $dates[$i] . ' 11:00:00';
+            $appointment->status = $statuses[$i];
+            $appointment->store();
+        }
+
+        $db = new Appointment();
+        $result = $db->addGroup('employee_id', 'status')
+                     ->selectColumns(
+                         'employee_id', 
+                         'status', 
+                         new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_appointments')
+                     );
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        
+        // Verificar se temos agrupamentos por employee_id e status
+        foreach ($result as $row) {
+            $this->assertNotNull($row->employee_id);
+            $this->assertNotNull($row->status);
+            $this->assertGreaterThan(0, (int)$row->total_appointments);
+        }
+    }
+
+    /**
+     * Teste de GROUP BY com HAVING
+     */
+    public function testGroupByWithHaving(): void
+    {
+        // Criar mais alguns funcionários para garantir que temos dados suficientes
+        $users = (new User())->getAll();
+        $userId = $users[0]->id;
+
+        for ($i = 1; $i <= 5; $i++) {
+            $employee = new Employee();
+            $employee->user_id = $userId;
+            $employee->name = "Having Test Employee {$i}";
+            $employee->tax_id = "98765432{$i}00";
+            $employee->email = "having{$i}@example.com";
+            $employee->phone = "558888888{$i}";
+            $employee->start_time = '08:00:00';
+            $employee->end_time = '18:00:00';
+            $employee->lunch_start = '12:00:00';
+            $employee->lunch_end = '13:00:00';
+            $employee->days = '1,2,3,4,5';
+            $employee->store();
+        }
+
+        $db = new Employee();
+        $result = $db->addGroup('user_id')
+                     ->addHaving(new \Diogodg\Neoorm\Definitions\Raw('COUNT(*)'), '>', '2')
+                     ->selectColumns('user_id', new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_employees'));
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        
+        // Verificar se todos os grupos retornados têm mais de 2 funcionários
+        foreach ($result as $row) {
+            $this->assertGreaterThan(2, (int)$row->total_employees);
+        }
+    }
+
+    /**
+     * Teste de GROUP BY com ORDER BY
+     */
+    public function testGroupByWithOrderBy(): void
+    {
+        $db = new Employee();
+        $result = $db->addGroup('user_id')
+                     ->addOrder(new \Diogodg\Neoorm\Definitions\Raw('COUNT(*)'), OrderCondition::DESC)
+                     ->selectColumns('user_id', new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_employees'));
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        
+        // Verificar se está ordenado corretamente (descendente por contagem)
+        $previousCount = PHP_INT_MAX;
+        foreach ($result as $row) {
+            $currentCount = (int)$row->total_employees;
+            $this->assertLessThanOrEqual($previousCount, $currentCount);
+            $previousCount = $currentCount;
+        }
+    }
+
+    /**
+     * Teste de GROUP BY com JOIN
+     */
+    public function testGroupByWithJoin(): void
+    {
+        $db = new Appointment();
+        $result = $db->addJoin('employee', 'employee.id', 'appointment.employee_id')
+                     ->addJoin('users', 'users.id', 'appointment.user_id')
+                     ->addGroup('appointment.employee_id', 'employee.name')
+                     ->selectColumns(
+                         'appointment.employee_id',
+                         ["employee.name", "employee_name"],
+                         new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_appointments')
+                     );
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        
+        foreach ($result as $row) {
+            $this->assertNotNull($row->employee_id);
+            $this->assertNotNull($row->employee_name);
+            $this->assertGreaterThan(0, (int)$row->total_appointments);
+        }
+    }
+
+    /**
+     * Teste de GROUP BY com funções de agregação múltiplas
+     */
+    public function testGroupByWithMultipleAggregations(): void
+    {
+        // Criar agendamentos com diferentes durações
+        $employee = (new Employee())->getAll()[0];
+        $user = (new User())->getAll()[0];
+        $schedule = (new Schedule())->getAll()[0];
+
+        $durations = [
+            ['10:00:00', '11:00:00'], // 1 hora
+            ['14:00:00', '15:30:00'], // 1.5 horas
+            ['16:00:00', '17:00:00']  // 1 hora
+        ];
+
+        foreach ($durations as $duration) {
+            $appointment = new Appointment();
+            $appointment->user_id = $user->id;
+            $appointment->schedule_id = $schedule->id;
+            $appointment->client_id = 1;
+            $appointment->employee_id = $employee->id;
+            $appointment->start_date = '2025-04-19 ' . $duration[0];
+            $appointment->end_date = '2025-04-19 ' . $duration[1];
+            $appointment->status = 'confirmed';
+            $appointment->store();
+        }
+
+        $db = new Appointment();
+        $result = $db->addGroup('employee_id')
+                     ->selectColumns(
+                         'employee_id',
+                         new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_appointments'),
+                         new \Diogodg\Neoorm\Definitions\Raw('MIN(start_date) as first_appointment'),
+                         new \Diogodg\Neoorm\Definitions\Raw('MAX(end_date) as last_appointment')
+                     );
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        
+        foreach ($result as $row) {
+            $this->assertNotNull($row->employee_id);
+            $this->assertGreaterThan(0, (int)$row->total_appointments);
+            $this->assertNotNull($row->first_appointment);
+            $this->assertNotNull($row->last_appointment);
+        }
+    }
+
+    /**
+     * Teste de COUNT com GROUP BY
+     */
+    public function testCountWithGroupBy(): void
+    {
+        // Criar múltiplos funcionários para diferentes usuários para testar contagem com agrupamento
+        $users = (new User())->getAll();
+        $user1 = $users[0];
+
+        // Criar um segundo usuário para testar
+        $user2 = new User();
+        $user2->name = 'Count Test User';
+        $user2->email = 'count.test@example.com';
+        $user2->phone = '5544444444';
+        $user2->tax_id = '99999999999';
+        $user2->store();
+
+        // Criar funcionários para o primeiro usuário
+        for ($i = 1; $i <= 3; $i++) {
+            $employee = new Employee();
+            $employee->user_id = $user1->id;
+            $employee->name = "Count Test Employee User1 {$i}";
+            $employee->tax_id = "11111111{$i}00";
+            $employee->email = "count.user1.{$i}@example.com";
+            $employee->phone = "551111111{$i}";
+            $employee->start_time = '08:00:00';
+            $employee->end_time = '18:00:00';
+            $employee->lunch_start = '12:00:00';
+            $employee->lunch_end = '13:00:00';
+            $employee->days = '1,2,3,4,5';
+            $employee->store();
+        }
+
+        // Criar funcionários para o segundo usuário
+        for ($i = 1; $i <= 2; $i++) {
+            $employee = new Employee();
+            $employee->user_id = $user2->id;
+            $employee->name = "Count Test Employee User2 {$i}";
+            $employee->tax_id = "22222222{$i}00";
+            $employee->email = "count.user2.{$i}@example.com";
+            $employee->phone = "552222222{$i}";
+            $employee->start_time = '08:00:00';
+            $employee->end_time = '18:00:00';
+            $employee->lunch_start = '12:00:00';
+            $employee->lunch_end = '13:00:00';
+            $employee->days = '1,2,3,4,5';
+            $employee->store();
+        }
+
+        // Testar count com GROUP BY
+        $db = new Employee();
+        $count = $db->addGroup('user_id')->count(true);
+
+        // O count com GROUP BY deve retornar o número de grupos únicos
+        // Esperamos pelo menos 2 grupos (user1 e user2)
+        $this->assertGreaterThanOrEqual(2, $count);
+
+        // Verificar se conseguimos obter os dados agrupados
+        $grouped = $db->addGroup('user_id')
+                      ->selectColumns('user_id', new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_employees'));
+
+        $this->assertIsArray($grouped);
+        $this->assertGreaterThanOrEqual(2, count($grouped));
+
+        // Verificar se os grupos estão corretos
+        $user1Found = false;
+        $user2Found = false;
+        
+        foreach ($grouped as $group) {
+            if ($group->user_id == $user1->id) {
+                $this->assertGreaterThanOrEqual(3, (int)$group->total_employees);
+                $user1Found = true;
+            }
+            if ($group->user_id == $user2->id) {
+                $this->assertEquals(2, (int)$group->total_employees);
+                $user2Found = true;
+            }
+        }
+
+        $this->assertTrue($user1Found, "Grupo do usuário 1 não foi encontrado");
+        $this->assertTrue($user2Found, "Grupo do usuário 2 não foi encontrado");
+
+        // Testar count com GROUP BY e HAVING
+        $db4 = new Employee();
+        $countWithHaving = $db4->addGroup('user_id')
+                               ->addHaving(new \Diogodg\Neoorm\Definitions\Raw('COUNT(*)'), '>=', '2')
+                               ->count();
+
+        // Deve retornar pelo menos 2 grupos (user1 tem 3+ funcionários, user2 tem 2 funcionários)
+        $this->assertGreaterThanOrEqual(2, $countWithHaving);
+
+        // Verificar que funciona com diferentes condições HAVING
+        $db5 = new Employee();
+        $countWithHaving2 = $db5->addGroup('user_id')
+                                ->addHaving(new \Diogodg\Neoorm\Definitions\Raw('COUNT(*)'), '>', '2')
+                                ->count();
+
+        // Deve retornar apenas 1 grupo (user1 tem mais de 2 funcionários)
+        $this->assertGreaterThanOrEqual(1, $countWithHaving2);
+        $this->assertLessThanOrEqual($countWithHaving, $countWithHaving2);
+    }
+
+    /**
+     * Teste de PAGINATE com GROUP BY
+     */
+    public function testPaginateWithGroupBy(): void
+    {
+        // Criar múltiplos funcionários para diferentes usuários para testar paginação com agrupamento
+        $users = (new User())->getAll();
+        $user1 = $users[0];
+
+        // Criar mais usuários para ter dados suficientes para paginação
+        $additionalUsers = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $user = new User();
+            $user->name = "Paginate Test User {$i}";
+            $user->email = "paginate.user{$i}@example.com";
+            $user->phone = "5533333333{$i}";
+            $user->tax_id = "88888888{$i}00";
+            $user->store();
+            $additionalUsers[] = $user;
+
+            // Criar funcionários para cada usuário
+            for ($j = 1; $j <= 2; $j++) {
+                $employee = new Employee();
+                $employee->user_id = $user->id;
+                $employee->name = "Paginate Employee User{$i} Emp{$j}";
+                $employee->tax_id = "77777777{$i}{$j}0";
+                $employee->email = "paginate.emp{$i}.{$j}@example.com";
+                $employee->phone = "5577777777{$i}";
+                $employee->start_time = '08:00:00';
+                $employee->end_time = '18:00:00';
+                $employee->lunch_start = '12:00:00';
+                $employee->lunch_end = '13:00:00';
+                $employee->days = '1,2,3,4,5';
+                $employee->store();
+            }
+        }
+
+        $db = new Employee();
+        
+        // Testar paginação com GROUP BY - primeira página com 3 grupos por página
+        $result = $db->addGroup('user_id')
+                     ->paginate(1, 3)
+                     ->selectColumns('user_id', new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_employees'));
+
+        $this->assertIsArray($result);
+        $this->assertNotEmpty($result);
+        $this->assertLessThanOrEqual(3, count($result)); // Máximo 3 grupos por página
+        $this->assertEquals(1, $db->getCurrentPage());
+        $this->assertEquals(3, $db->getLimit());
+        $this->assertEquals(0, $db->getOffset());
+
+        // Verificar se todos os grupos retornados têm dados válidos
+        foreach ($result as $group) {
+            $this->assertNotNull($group->user_id);
+            $this->assertGreaterThan(0, (int)$group->total_employees);
+        }
+
+        // Testar segunda página
+        $db2 = new Employee();
+        $result2 = $db2->addGroup('user_id')
+                       ->paginate(2, 3)
+                       ->selectColumns('user_id', new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_employees'));
+
+        $this->assertIsArray($result2);
+        $this->assertEquals(2, $db2->getCurrentPage());
+        $this->assertEquals(3, $db2->getLimit());
+        $this->assertEquals(3, $db2->getOffset());
+        $this->assertEquals(1, $db2->getPreviousPage());
+
+        // Verificar se as páginas retornam grupos diferentes
+        if (!empty($result) && !empty($result2)) {
+            $page1UserIds = array_column($result, 'user_id');
+            $page2UserIds = array_column($result2, 'user_id');
+            
+            // Não deve haver interseção entre os grupos das diferentes páginas
+            $intersection = array_intersect($page1UserIds, $page2UserIds);
+            $this->assertEmpty($intersection, "As páginas não devem conter os mesmos grupos");
+        }
+
+        // Testar paginação com HAVING
+        $db3 = new Employee();
+        $result3 = $db3->addGroup('user_id')
+                       ->addHaving(new \Diogodg\Neoorm\Definitions\Raw('COUNT(*)'), '>=', '2')
+                       ->paginate(1, 2)
+                       ->selectColumns('user_id', new \Diogodg\Neoorm\Definitions\Raw('COUNT(*) as total_employees'));
+
+        $this->assertIsArray($result3);
+        $this->assertNotEmpty($result3);
+        
+        // Verificar se todos os grupos têm pelo menos 2 funcionários
+        foreach ($result3 as $group) {
+            $this->assertGreaterThanOrEqual(2, (int)$group->total_employees);
+        }
+    }
 }

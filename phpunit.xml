@@ -16,14 +16,14 @@
         </include>
     </source>
     <php>
-        <env name="DRIVER" value="mysql"/>
-        <env name="DBHOST" value="mysql"/>
-        <env name="DBPORT" value="3306"/>
+        <env name="DRIVER" value="pgsql"/>
+        <env name="DBHOST" value="postgres"/>
+        <env name="DBPORT" value="5432"/>
         <env name="DBNAME" value="test_neoorm"/>
-        <env name="DBUSER" value="root"/>
-        <env name="DBPASSWORD" value="root"/>
+        <env name="DBUSER" value="postgres"/>
+        <env name="DBPASSWORD" value="postgres"/>
         <env name="DBCHARSET" value="utf8mb4"/>
-        <env name="PATH_MODEL" value="./tests/app/models"/>
+        <env name="PATH_MODEL" value="./tests/App/Models"/>
         <env name="MODEL_NAMESPACE" value="Tests\App\Models"/>
     </php>
 </phpunit>

@@ -82,16 +82,30 @@ trait DbSelect
     public function count(bool $clean = false): int
     {
         try {
-            $sql = 'SELECT count(*) FROM ' . $this->table;
-            $sql .= implode('', $this->joins);
+            // Se houver GROUP BY, precisamos contar os grupos únicos
+            if (!empty($this->group)) {
+                $sql = 'SELECT COUNT(*) FROM (SELECT 1 FROM ' . $this->table;
+                $sql .= implode('', $this->joins);
 
-            if ($this->filters) {
-                $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
-                    return $i === 0 ? substr($filter, 4) : $filter;
-                }, $this->filters, array_keys($this->filters)));
+                if ($this->filters) {
+                    $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
+                        return $i === 0 ? substr($filter, 4) : $filter;
+                    }, $this->filters, array_keys($this->filters)));
+                }
+                $sql .= implode('', $this->group);
+                $sql .= implode('', $this->having);
+                $sql .= ') as grouped_count';
+            } else {
+                $sql = 'SELECT count(*) FROM ' . $this->table;
+                $sql .= implode('', $this->joins);
+
+                if ($this->filters) {
+                    $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
+                        return $i === 0 ? substr($filter, 4) : $filter;
+                    }, $this->filters, array_keys($this->filters)));
+                }
+                $sql .= implode('', $this->having);
             }
-            $sql .= implode('', $this->group);
-            $sql .= implode('', $this->having);
 
             $stmt = $this->pdo->prepare($sql);
 
