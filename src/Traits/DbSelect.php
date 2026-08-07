@@ -33,15 +33,10 @@ trait DbSelect
     {
         $sql = "SELECT * FROM " . $this->table;
         $sql .= implode('', $this->joins);
-
-        if ($this->filters) {
-            $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
-                return $i === 0 ? substr($filter, 4) : $filter;
-            }, $this->filters, array_keys($this->filters)));
-        }
+        $sql .= $this->buildWhereClause();
         $sql .= implode('', $this->group);
-        $sql .= implode('', $this->having);
-        $sql .= implode('', $this->order);
+        $sql .= $this->buildHavingClause();
+        $sql .= $this->buildOrderClause();
         $sql .= implode('', $this->limit);
 
         return $this->selectInstruction($sql);
@@ -49,12 +44,20 @@ trait DbSelect
 
     /**
      * Seleciona registros com base em colunas específicas.
+     *
+     * Cada coluna pode ser um identificador ou um par [coluna, alias]; ambos são validados.
      */
     public function selectColumns(...$columns): array
     {
-        $validatedColumns = array_map(function($col) {
-            if(is_array($col) && count($col) == 2){
-                return implode(" as ",$col);
+        $validatedColumns = array_map(function ($col) {
+            if (is_array($col)) {
+                if (count($col) !== 2) {
+                    throw new Exception("Alias de coluna precisa ser um array [coluna, alias].");
+                }
+
+                [$column, $alias] = array_values($col);
+
+                return $this->validateIdentifier($column) . " as " . $this->validateIdentifier($alias);
             }
 
             return $this->validateIdentifier($col);
@@ -62,15 +65,10 @@ trait DbSelect
 
         $sql = "SELECT " . implode(",", $validatedColumns) . " FROM " . $this->table;
         $sql .= implode('', $this->joins);
-
-        if ($this->filters) {
-            $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
-                return $i === 0 ? substr($filter, 4) : $filter;
-            }, $this->filters, array_keys($this->filters)));
-        }
+        $sql .= $this->buildWhereClause();
         $sql .= implode('', $this->group);
-        $sql .= implode('', $this->having);
-        $sql .= implode('', $this->order);
+        $sql .= $this->buildHavingClause();
+        $sql .= $this->buildOrderClause();
         $sql .= implode('', $this->limit);
 
         return $this->selectInstruction($sql);
@@ -86,44 +84,26 @@ trait DbSelect
             if (!empty($this->group)) {
                 $sql = 'SELECT COUNT(*) FROM (SELECT 1 FROM ' . $this->table;
                 $sql .= implode('', $this->joins);
-
-                if ($this->filters) {
-                    $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
-                        return $i === 0 ? substr($filter, 4) : $filter;
-                    }, $this->filters, array_keys($this->filters)));
-                }
+                $sql .= $this->buildWhereClause();
                 $sql .= implode('', $this->group);
-                $sql .= implode('', $this->having);
+                $sql .= $this->buildHavingClause();
                 $sql .= ') as grouped_count';
             } else {
                 $sql = 'SELECT count(*) FROM ' . $this->table;
                 $sql .= implode('', $this->joins);
-
-                if ($this->filters) {
-                    $sql .= " WHERE " . implode(' ', array_map(function($filter, $i) {
-                        return $i === 0 ? substr($filter, 4) : $filter;
-                    }, $this->filters, array_keys($this->filters)));
-                }
-                $sql .= implode('', $this->having);
+                $sql .= $this->buildWhereClause();
+                $sql .= $this->buildHavingClause();
             }
 
             $stmt = $this->pdo->prepare($sql);
 
+            $this->applyBinds($stmt);
+
             if ($this->debug) {
                 $stmt->debugDumpParams();
-            }
-
-            if ($this->valuesBind) {
-                foreach ($this->valuesBind as $key => $data) {
-                    $stmt->bindParam($key, $data[0], $data[1]);
-                }
             }
 
             $stmt->execute();
-
-            if ($this->debug) {
-                $stmt->debugDumpParams();
-            }
 
             if($clean){
                 $this->clean();

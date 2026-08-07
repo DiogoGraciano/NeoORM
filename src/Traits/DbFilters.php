@@ -2,6 +2,7 @@
 namespace Diogodg\Neoorm\Traits;
 
 use Diogodg\Neoorm\Definitions\Raw;
+use Diogodg\Neoorm\Enums\LogicalOperator;
 use Diogodg\Neoorm\Enums\OperatorCondition;
 use Diogodg\Neoorm\Enums\OrderCondition;
 use Exception;
@@ -22,46 +23,48 @@ trait DbFilters
 
     /**
      * Adiciona um filtro WHERE.
+     *
+     * O operador é validado contra a allowlist de {@see LogicalOperator}; o valor
+     * sempre vira bind. Para comparações com NULL use addFilterNull()/addFilterNotNull().
      */
     public function addFilter(
         Raw|string $field,
-        string $logicalOperator,
+        string|LogicalOperator $logicalOperator,
         mixed $value,
         OperatorCondition $operatorCondition = OperatorCondition::AND,
         bool $startGroupFilter = false,
         bool $endGroupFilter = false
     ): static {
-        // Valida o nome do campo
-        $field = $this->validateIdentifier($field);
-
-        $start  = $startGroupFilter ? "(" : "";
-        $end    = $endGroupFilter   ? ")" : "";
-
-        // Caso seja IN, o $value deve ser array
-        if (stripos($logicalOperator, "in") !== false) {
-            if (!is_array($value)) {
-                throw new Exception("Para operadores IN, o valor precisa ser um array.");
-            }
-            $inValue = "(";
-            foreach ($value as $data) {
-                $inValue .= "{$this->setBind($data)},";
-            }
-            $inValue = rtrim($inValue, ",") . ")";
-
-            $filter = " " . $operatorCondition->name . " " . $start . $field .
-                      " " . $logicalOperator . " " . $inValue . $end;
-            $this->filters[] = $filter;
-        } elseif (stripos($logicalOperator, "is") !== false) {
-            $filter = " " . $operatorCondition->name . " " . $start . $field .
-                      " " . $logicalOperator . " {$value} " . $end;
-            $this->filters[] = $filter;
-        } else {
-            $filter = " " . $operatorCondition->name . " " . $start . $field .
-                      " " . $logicalOperator . " {$this->setBind($value)} " . $end;
-            $this->filters[] = $filter;
-        }
+        $this->filters[] = [
+            'condition' => $operatorCondition->name,
+            'sql' => $this->buildComparison($field, $logicalOperator, $value, $startGroupFilter, $endGroupFilter),
+        ];
 
         return $this;
+    }
+
+    /**
+     * Adiciona um filtro "campo IS NULL".
+     */
+    public function addFilterNull(
+        Raw|string $field,
+        OperatorCondition $operatorCondition = OperatorCondition::AND,
+        bool $startGroupFilter = false,
+        bool $endGroupFilter = false
+    ): static {
+        return $this->addNullFilter($field, 'IS NULL', $operatorCondition, $startGroupFilter, $endGroupFilter);
+    }
+
+    /**
+     * Adiciona um filtro "campo IS NOT NULL".
+     */
+    public function addFilterNotNull(
+        Raw|string $field,
+        OperatorCondition $operatorCondition = OperatorCondition::AND,
+        bool $startGroupFilter = false,
+        bool $endGroupFilter = false
+    ): static {
+        return $this->addNullFilter($field, 'IS NOT NULL', $operatorCondition, $startGroupFilter, $endGroupFilter);
     }
 
     /**
@@ -69,16 +72,7 @@ trait DbFilters
      */
     public function addOrder(Raw|string $column, OrderCondition $order = OrderCondition::DESC): static
     {
-        // Valida o nome da coluna
-        $column = $this->validateIdentifier($column);
-
-        if ($this->hasOrder) {
-            $this->order[] .= "," . $column . " " . $order->name;
-        } else {
-            $this->order[] = " ORDER BY " . $column . " " . $order->name;
-        }
-
-        $this->hasOrder = true;
+        $this->order[] = $this->validateIdentifier($column) . " " . $order->name;
 
         return $this;
     }
@@ -111,8 +105,7 @@ trait DbFilters
      */
     public function addGroup(...$columns): static
     {
-        // Valida cada coluna
-        $validatedColumns = array_map(function($col) {
+        $validatedColumns = array_map(function ($col) {
             return $this->validateIdentifier($col);
         }, $columns);
 
@@ -125,49 +118,17 @@ trait DbFilters
      */
     public function addHaving(
         Raw|string $field,
-        string $logicalOperator,
+        string|LogicalOperator $logicalOperator,
         mixed $value,
         OperatorCondition $operatorCondition = OperatorCondition::AND,
         bool $startGroupFilter = false,
         bool $endGroupFilter = false
     ): static {
-        // Valida o nome do campo
-        $field = $this->validateIdentifier($field);
+        $this->having[] = [
+            'condition' => $operatorCondition->name,
+            'sql' => $this->buildComparison($field, $logicalOperator, $value, $startGroupFilter, $endGroupFilter),
+        ];
 
-        $start  = $startGroupFilter ? "(" : "";
-        $end    = $endGroupFilter   ? ")" : "";
-
-        // Caso seja IN, o $value deve ser array
-        if (stripos($logicalOperator, "in") !== false) {
-            if (!is_array($value)) {
-                throw new Exception("Para operadores IN, o valor precisa ser um array.");
-            }
-            $inValue = "(";
-            foreach ($value as $data) {
-                $inValue .= "{$this->setBind($data)},";
-            }
-            $inValue = rtrim($inValue, ",") . ")";
-
-            if ($this->hasHaving) {
-                $filter = " " . $operatorCondition->name . " " . $start . $field .
-                          " " . $logicalOperator . " " . $inValue . $end;
-            } else {
-                $filter = " HAVING " . $start . $field .
-                          " " . $logicalOperator . " " . $inValue . $end;
-            }
-            $this->having[] = $filter;
-        } else {
-            if ($this->hasHaving) {
-                $filter = " " . $operatorCondition->name . " " . $start . $field .
-                          " " . $logicalOperator . " {$this->setBind($value)} " . $end;
-            } else {
-                $filter = " HAVING " . $start . $field .
-                          " " . $logicalOperator . " {$this->setBind($value)} " . $end;
-            }
-            $this->having[] = $filter;
-        }
-
-        $this->hasHaving = true;
         return $this;
     }
 
@@ -179,23 +140,97 @@ trait DbFilters
         Raw|string $columnTable,
         Raw|string $columnRelation,
         string $typeJoin = "INNER",
-        string $logicalOperator = '='
+        string|LogicalOperator $logicalOperator = LogicalOperator::EQUAL
     ): static {
-        // Valida os identificadores
-        $table         = $this->validateIdentifier($table);
-        $columnTable   = $this->validateIdentifier($columnTable);
+        $table          = $this->validateIdentifier($table);
+        $columnTable    = $this->validateIdentifier($columnTable);
         $columnRelation = $this->validateIdentifier($columnRelation);
+        $operator       = LogicalOperator::fromMixed($logicalOperator);
 
-        $typeJoin = strtoupper(trim($typeJoin));
+        if ($operator->requiresList() || $operator->requiresRange()) {
+            throw new Exception("Tabela: {$this->table} - Operador não suportado em join: {$operator->value}");
+        }
+
+        $typeJoin = strtoupper(preg_replace('/\s+/', ' ', trim($typeJoin)));
         $valid = ["LEFT", "RIGHT", "INNER", "OUTER", "FULL OUTER", "LEFT OUTER", "RIGHT OUTER"];
 
-        if (!in_array($typeJoin, $valid)) {
+        if (!in_array($typeJoin, $valid, true)) {
             throw new Exception("Tabela: {$this->table} - Tipo de join inválido: {$typeJoin}");
         }
 
-        $join = " " . $typeJoin . " JOIN " . $table . " ON " .
-                $columnTable . $logicalOperator . $columnRelation . " ";
-        $this->joins[] = $join;
+        $this->joins[] = " " . $typeJoin . " JOIN " . $table . " ON " .
+                         $columnTable . " " . $operator->value . " " . $columnRelation . " ";
+
+        return $this;
+    }
+
+    /**
+     * Monta a expressão de comparação de um filtro, sempre parametrizando o valor.
+     */
+    private function buildComparison(
+        Raw|string $field,
+        string|LogicalOperator $logicalOperator,
+        mixed $value,
+        bool $startGroupFilter,
+        bool $endGroupFilter
+    ): string {
+        $field    = $this->validateIdentifier($field);
+        $operator = LogicalOperator::fromMixed($logicalOperator);
+
+        $start = $startGroupFilter ? "(" : "";
+        $end   = $endGroupFilter ? ")" : "";
+
+        if ($operator->requiresList()) {
+            if (!is_array($value)) {
+                throw new Exception("Para o operador {$operator->value} o valor precisa ser um array.");
+            }
+
+            if (!$value) {
+                throw new Exception("Para o operador {$operator->value} o array de valores não pode ser vazio.");
+            }
+
+            $binds = array_map(fn($data) => $this->setBind($data), $value);
+
+            return $start . $field . " " . $operator->value . " (" . implode(",", $binds) . ")" . $end;
+        }
+
+        if ($operator->requiresRange()) {
+            if (!is_array($value) || count($value) !== 2) {
+                throw new Exception("Para o operador {$operator->value} o valor precisa ser um array com dois elementos.");
+            }
+
+            $value = array_values($value);
+
+            return $start . $field . " " . $operator->value . " " .
+                   $this->setBind($value[0]) . " AND " . $this->setBind($value[1]) . $end;
+        }
+
+        if (is_array($value)) {
+            throw new Exception("Para o operador {$operator->value} o valor não pode ser um array.");
+        }
+
+        return $start . $field . " " . $operator->value . " " . $this->setBind($value) . $end;
+    }
+
+    /**
+     * Monta um filtro de nulidade. O predicado vem de constante interna, nunca do chamador.
+     */
+    private function addNullFilter(
+        Raw|string $field,
+        string $predicate,
+        OperatorCondition $operatorCondition,
+        bool $startGroupFilter,
+        bool $endGroupFilter
+    ): static {
+        $field = $this->validateIdentifier($field);
+
+        $start = $startGroupFilter ? "(" : "";
+        $end   = $endGroupFilter ? ")" : "";
+
+        $this->filters[] = [
+            'condition' => $operatorCondition->name,
+            'sql' => $start . $field . " " . $predicate . $end,
+        ];
 
         return $this;
     }

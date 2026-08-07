@@ -2,6 +2,7 @@
 
 namespace Diogodg\Neoorm\Traits;
 
+use Diogodg\Neoorm\Config;
 use Diogodg\Neoorm\Definitions\Raw;
 use Exception;
 use PDO;
@@ -24,13 +25,16 @@ trait DbHelpers{
         $this->order             = [];
         $this->filters           = [];
         $this->valuesBind        = [];
-        $this->hasOrder          = false;
-        $this->hasHaving         = false;
+        $this->bindCounter       = 0;
     }
 
 
     /**
      * Valida se o identificador é seguro (apenas letras, números, underscore e ponto são permitidos).
+     *
+     * Um {@see Raw} passa direto, sem validação: ele é a via de escape explícita do ORM
+     * e a responsabilidade pelo conteúdo é de quem o constrói. Nunca monte um Raw a
+     * partir de entrada do usuário.
      */
     private function validateIdentifier(Raw|string $identifier): string
     {
@@ -42,6 +46,50 @@ trait DbHelpers{
             throw new Exception("Identificador inválido: " . $identifier);
         }
         return $identifier;
+    }
+
+    /**
+     * Monta a cláusula WHERE a partir dos filtros acumulados.
+     * Retorna string vazia quando não há filtros.
+     */
+    private function buildWhereClause(): string
+    {
+        return $this->buildConditionClause($this->filters, " WHERE ");
+    }
+
+    /**
+     * Monta a cláusula HAVING a partir dos filtros acumulados.
+     */
+    private function buildHavingClause(): string
+    {
+        return $this->buildConditionClause($this->having, " HAVING ");
+    }
+
+    /**
+     * Monta a cláusula ORDER BY.
+     */
+    private function buildOrderClause(): string
+    {
+        return $this->order ? " ORDER BY " . implode(",", $this->order) : "";
+    }
+
+    /**
+     * Junta uma lista de condições, omitindo o conector do primeiro elemento.
+     *
+     * @param array<int,array{condition:string,sql:string}> $conditions
+     */
+    private function buildConditionClause(array $conditions, string $prefix): string
+    {
+        if (!$conditions) {
+            return "";
+        }
+
+        $sql = "";
+        foreach ($conditions as $i => $condition) {
+            $sql .= $i === 0 ? $condition['sql'] : " " . $condition['condition'] . " " . $condition['sql'];
+        }
+
+        return $prefix . $sql;
     }
 
     /**
@@ -75,41 +123,21 @@ trait DbHelpers{
      */
     private static function getClassbyTableName(string $tableName): string
     {
-        // Exemplo simplificado de “dedução”
-        $className = 'App\\Models';
+        $namespace = Config::getModelNamespace() ?: 'App\\Models';
+        $namespace = rtrim($namespace, '\\') . '\\';
 
         $tableNameModified = strtolower(str_replace("_", " ", $tableName));
 
-        // Aqui, há várias tentativas
-        if (
-            class_exists($className . $tableNameModified) &&
-            property_exists($className . str_replace(" ", "", $tableNameModified), "table")
-        ) {
-            return $className . $tableName;
-        }
-        if (
-            class_exists($className . ucfirst($tableNameModified)) &&
-            property_exists($className . str_replace(" ", "", ucfirst($tableNameModified)), "table")
-        ) {
-            return $className . ucfirst($tableName);
-        }
-        if (
-            class_exists($className . ucwords($tableNameModified)) &&
-            property_exists($className . str_replace(" ", "", ucwords($tableNameModified)), "table")
-        ) {
-            return $className . ucwords($tableName);
-        }
+        // studly_case: "schedule_user" => "ScheduleUser"
+        $candidates = [
+            $namespace . str_replace(" ", "", ucwords($tableNameModified)),
+            $namespace . ucfirst($tableName),
+            $namespace . $tableName,
+        ];
 
-        // Se nada funcionou, pode varrer arquivos:
-        $tableFiles = scandir(dirname(__DIR__) . DIRECTORY_SEPARATOR . "tables");
-        foreach ($tableFiles as $tableFile) {
-            $tryClassName = $className . "\\" . str_replace(".php", "", $tableFile);
-            if (
-                class_exists($tryClassName) &&
-                property_exists($tryClassName, "table") &&
-                $tryClassName::table == $tableName
-            ) {
-                return $tryClassName;
+        foreach ($candidates as $candidate) {
+            if (class_exists($candidate) && constant($candidate . '::table') === $tableName) {
+                return $candidate;
             }
         }
 
@@ -117,7 +145,10 @@ trait DbHelpers{
     }
 
     /**
-     * Define os valores de bind (parâmetros) para o PDO.
+     * Registra um valor para bind e devolve o placeholder correspondente.
+     *
+     * Placeholders são sequenciais dentro da query em construção, o que torna
+     * colisão impossível e o SQL gerado legível em debug.
      */
     private function setBind(mixed $value):string
     {
@@ -131,11 +162,21 @@ trait DbHelpers{
             $param = PDO::PARAM_STR;
         }
 
-        $md5 = md5(microtime(true)+rand());
+        $placeholder = "p" . $this->bindCounter++;
 
-        $this->valuesBind[$md5] = [$value, $param];
+        $this->valuesBind[$placeholder] = [$value, $param];
 
-        return ":".$md5;
+        return ":".$placeholder;
+    }
+
+    /**
+     * Aplica os binds acumulados a um statement preparado.
+     */
+    private function applyBinds(PDOStatement $stmt): void
+    {
+        foreach ($this->valuesBind as $key => [$value, $type]) {
+            $stmt->bindValue(":" . $key, $value, $type);
+        }
     }
 
     /**
@@ -145,21 +186,13 @@ trait DbHelpers{
     {
         $stmt = $this->pdo->prepare($sql_instruction);
 
+        $this->applyBinds($stmt);
+
         if ($this->debug) {
             $stmt->debugDumpParams();
-        }
-
-        if ($this->valuesBind) {
-            foreach ($this->valuesBind as $key => $data) {
-                $stmt->bindParam($key, $data[0], $data[1]);
-            }
         }
 
         $stmt->execute();
-
-        if ($this->debug) {
-            $stmt->debugDumpParams();
-        }
 
         // Ao final, limpamos para não poluir a próxima query
         $this->clean();
@@ -173,9 +206,11 @@ trait DbHelpers{
     private function getlastIdBd(): int
     {
         try {
+            $primaryKey = $this->validateIdentifier($this->columns[0]);
+
             $sql = $this->pdo->prepare(
-                "SELECT {$this->columns[0]} FROM {$this->table} 
-                 ORDER BY {$this->columns[0]} DESC LIMIT 1"
+                "SELECT {$primaryKey} FROM {$this->table}
+                 ORDER BY {$primaryKey} DESC LIMIT 1"
             );
             $sql->execute();
 

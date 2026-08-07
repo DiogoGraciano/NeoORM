@@ -18,11 +18,8 @@ trait DbCrud
         try {
             // Mapeia as colunas e valida cada uma delas
             $columnsDb = [];
-            $safeColumns = [];
             foreach ($this->columns as $col) {
-                $safeCol = $this->validateIdentifier($col);
-                $columnsDb[$safeCol] = true;
-                $safeColumns[] = $safeCol;
+                $columnsDb[$this->validateIdentifier($col)] = true;
             }
 
             if ($this->object && !isset($this->object[0])) {
@@ -34,10 +31,9 @@ trait DbCrud
 
                 // Verifica se o campo de PK (primeira coluna) está setado
                 $primaryKey = $this->validateIdentifier($this->columns[0]);
-                if (
-                    !isset($objectFilter[$primaryKey]) ||
-                    empty($objectFilter[$primaryKey])
-                ) {
+                $isInsert = !isset($objectFilter[$primaryKey]) || empty($objectFilter[$primaryKey]);
+
+                if ($isInsert) {
                     // Se a tabela for auto-increment, removemos a PK do INSERT
                     if ($isAutoIncrement) {
                         unset($objectFilter[$primaryKey]);
@@ -67,31 +63,29 @@ trait DbCrud
                         }
                         $sql_instruction .= "{$this->validateIdentifier($key)} = {$this->setBind($data)},";
                     }
-                    $sql_instruction = rtrim($sql_instruction, ",") . " WHERE ";
+                    $sql_instruction = rtrim($sql_instruction, ",");
 
                     // Se existirem filtros, usa-os no WHERE
                     if ($this->filters) {
-                        $sql_instruction .= implode(' ', array_map(function ($filter, $i) {
-                            return $i === 0 ? substr($filter, 4) : $filter;
-                        }, $this->filters, array_keys($this->filters)));
+                        $sql_instruction .= $this->buildWhereClause();
                     } else {
-                        $sql_instruction .= "{$primaryKey} = {$this->setBind($objectFilter[$primaryKey])}";
+                        $sql_instruction .= " WHERE {$primaryKey} = {$this->setBind($objectFilter[$primaryKey])}";
                     }
                 }
 
-                if($isAutoIncrement && Config::getDriver() != 'mysql'){
+                $isMysql = Config::getDriver() === 'mysql';
+
+                // RETURNING só faz sentido no INSERT com PK gerada pelo banco
+                if ($isInsert && $isAutoIncrement && !$isMysql) {
                     $sql_instruction .= " RETURNING {$primaryKey}";
                 }
 
                 $stmt = $this->executeSql($sql_instruction);
 
-                if ($isAutoIncrement && (!isset($objectFilter[$primaryKey]) || !$objectFilter[$primaryKey])) {
-                    if(Config::getDriver() === 'mysql'){
-                        $this->object[$primaryKey] = $this->pdo->lastInsertId();
-                    }
-                    else{
-                        $this->object[$primaryKey] = $stmt->fetchColumn();
-                    }
+                if ($isInsert && $isAutoIncrement) {
+                    $this->object[$primaryKey] = $isMysql
+                        ? $this->pdo->lastInsertId()
+                        : $stmt->fetchColumn();
                 }
 
                 return true;
@@ -163,13 +157,11 @@ trait DbCrud
         try {
             $sql = "DELETE FROM {$this->table}";
 
-            if ($this->filters) {
-                $sql .= " WHERE " . implode(' ', array_map(function ($filter, $i) {
-                    return $i === 0 ? substr($filter, 4) : $filter;
-                }, $this->filters, array_keys($this->filters)));
-            } else {
+            if (!$this->filters) {
                 throw new Exception("Filtros devem ser informados para deleteByFilter.");
             }
+
+            $sql .= $this->buildWhereClause();
 
             $this->executeSql($sql);
             return true;

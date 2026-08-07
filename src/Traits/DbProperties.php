@@ -67,7 +67,7 @@ trait DbProperties
     /**
      * Propriedades configuradas (HAVING).
      *
-     * @var array
+     * @var array<int,array{condition:string,sql:string}>
      */
     private array $having = [];
 
@@ -82,16 +82,23 @@ trait DbProperties
     /**
      * Filtros configurados (WHERE).
      *
-     * @var array
+     * @var array<int,array{condition:string,sql:string}>
      */
     private array $filters = [];
 
     /**
-     * Valores do bindParam.
+     * Valores a vincular no statement, indexados pelo nome do placeholder.
      *
-     * @var array
+     * @var array<string,array{0:mixed,1:int}>
      */
     private array $valuesBind = [];
+
+    /**
+     * Sequencial usado para nomear os placeholders da query em construção.
+     *
+     * @var int
+     */
+    private int $bindCounter = 0;
 
     /**
      * Instância do PDO.
@@ -106,18 +113,4 @@ trait DbProperties
      * @var bool
      */
     private bool $asArray = false;
-
-    /**
-     * Indica se já foi adicionada alguma ordenação (ORDER BY).
-     *
-     * @var bool
-     */
-    private bool $hasOrder = false;
-
-    /**
-     * Indica se já foi adicionado algum filtro HAVING.
-     *
-     * @var bool
-     */
-    private bool $hasHaving = false;
 }
