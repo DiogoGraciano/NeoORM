@@ -18,6 +18,11 @@ interface Table
 
     public function create();
 
+    /**
+     * Recria a tabela do zero, descartando os dados existentes.
+     */
+    public function recreate();
+
     public function update();
 
     public function hasForeignKey():bool;

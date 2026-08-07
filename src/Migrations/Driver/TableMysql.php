@@ -313,13 +313,28 @@ class TableMysql implements Table
 
     public function create()
     {
+        $this->createTable(false);
+    }
+
+    /**
+     * Recria a tabela do zero, DESCARTANDO os dados existentes.
+     *
+     * Operação destrutiva e por isso explícita: create() nunca remove a tabela.
+     */
+    public function recreate()
+    {
+        $this->createTable(true);
+    }
+
+    private function createTable(bool $dropIfExists): void
+    {
         try {
             // Extrai o schema atual da tabela
             $currentSchema = $this->schemaExtractor->extractTableSchema($this);
-            
+
             // Executa a criação da tabela
-            $this->executeCreateTable();
-            
+            $this->executeCreateTable($dropIfExists);
+
             // Salva o schema nas tabelas de rastreamento
             $this->schemaTracker->saveTableSchema(
                 $this->table,
@@ -329,7 +344,7 @@ class TableMysql implements Table
                 $currentSchema['constraints'],
                 $currentSchema['foreign_keys']
             );
-            
+
         } catch (Exception $e) {
             throw new Exception("Erro ao criar tabela {$this->table}: " . $e->getMessage());
         }
@@ -338,24 +353,32 @@ class TableMysql implements Table
     /**
      * Executa a criação física da tabela
      */
-    private function executeCreateTable(): void
+    private function executeCreateTable(bool $dropIfExists = false): void
     {
-        $sql = "SET FOREIGN_KEY_CHECKS = 0; DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
-        foreach ($this->columns as $column) {            
+        $comment = str_replace("'", "''", $this->comment);
+
+        $sql = "SET FOREIGN_KEY_CHECKS = 0;";
+
+        if ($dropIfExists) {
+            $sql .= "DROP TABLE IF EXISTS {$this->table};";
+        }
+
+        $sql .= "CREATE TABLE IF NOT EXISTS {$this->table}(";
+        foreach ($this->columns as $column) {
             $sql .= implode(",",array_filter($column->columnSql));
         }
 
         if($this->primary)
             $sql .= "PRIMARY KEY (".implode(",",$this->primary).")";
 
-        $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$this->comment}';";
+        $sql .= ")ENGINE={$this->engine} COLLATE={$this->collate} COMMENT='{$comment}';";
 
         if($this->isAutoIncrement && $this->primary){
             foreach ($this->primary as $name){
                 $sql .= "ALTER TABLE {$this->table} MODIFY COLUMN {$name} INT AUTO_INCREMENT; ";
             }
         }
-        
+
         foreach ($this->indexs as $index) {
             $sql .= $index["sql"];
         }
@@ -366,9 +389,14 @@ class TableMysql implements Table
         }
 
         $sql = str_replace(", )",")",$sql);
-        $sql = str_replace(",)",")",$sql)." SET FOREIGN_KEY_CHECKS = 1;";
+        $sql = str_replace(",)",")",$sql);
 
-        $this->pdo->exec($sql);
+        try {
+            $this->pdo->exec($sql);
+        } finally {
+            // Restaura a checagem de FK mesmo se a criação falhar no meio
+            $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
+        }
     }
 
     public function addForeignKeytoTable(){

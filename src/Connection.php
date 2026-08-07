@@ -66,10 +66,18 @@ class Connection
                         Config::getDbName()
                     );
                 }
-                self::$pdo = new PDO($dsn, Config::getUser(), Config::getPassword());
-                self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                self::$pdo = new PDO($dsn, Config::getUser(), Config::getPassword(), [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    // Sem emulação o driver envia os parâmetros separados da query,
+                    // e os tipos declarados no bind são de fato respeitados.
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                    PDO::ATTR_STRINGIFY_FETCHES  => false,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                ]);
             } catch (PDOException $e) {
-                throw new Exception("Erro ao conectar ao banco de dados");
+                // A mensagem original pode conter host/usuário; mantém genérica para
+                // quem chama, mas preserva o original encadeado para o log.
+                throw new Exception("Erro ao conectar ao banco de dados", 0, $e);
             }
         }
 
@@ -94,27 +102,43 @@ class Connection
     public static function commit(): void
     {
         try {
-            if (self::$pdo->inTransaction()) {
+            if (self::$pdo !== null && self::$pdo->inTransaction()) {
                 self::$pdo->commit();
             }
-        } catch (\PDOException $e) {
-            throw new Exception("Erro ao confirmar a transação: " . $e->getMessage());
+        } catch (PDOException $e) {
+            throw new Exception("Erro ao confirmar a transação: " . $e->getMessage(), 0, $e);
         }
     }
 
     public static function rollBack(): void
     {
         try {
-            if (self::$pdo->inTransaction()) {
+            if (self::$pdo !== null && self::$pdo->inTransaction()) {
                 self::$pdo->rollBack();
             }
-        } catch (\PDOException $e) {
-            throw new Exception("Erro ao desfazer a transação: " . $e->getMessage());
+        } catch (PDOException $e) {
+            throw new Exception("Erro ao desfazer a transação: " . $e->getMessage(), 0, $e);
         }
     }
 
     public static function inTransaction(): bool
     {
         return self::$pdo ? self::$pdo->inTransaction() : false;
+    }
+
+    /**
+     * Encerra a conexão compartilhada.
+     *
+     * Necessário antes de operações administrativas que exigem que não haja
+     * sessão aberta no banco (DROP DATABASE, por exemplo). A próxima chamada a
+     * getConnection() abre uma conexão nova.
+     */
+    public static function close(): void
+    {
+        if (self::$pdo !== null && self::$pdo->inTransaction()) {
+            self::$pdo->rollBack();
+        }
+
+        self::$pdo = null;
     }
 }

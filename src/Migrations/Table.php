@@ -15,12 +15,15 @@ class Table implements TableInterface
 
     function __construct(string $table,string $engine="InnoDB",string $collate="utf8mb4_general_ci",string $comment = "")
     {
-        if(Config::getDriver() == "mysql"){
-            $this->table = new tableMysql($table,$engine,$collate,$comment);
-        }
-        elseif(Config::getDriver() == "pgsql"){
-            $this->table = new tablePgsql($table,$engine,$collate,$comment);
-        }
+        $driver = Config::getDriver();
+
+        $this->table = match ($driver) {
+            "mysql" => new TableMysql($table, $engine, $collate, $comment),
+            "pgsql" => new TablePgsql($table, $engine, $collate, $comment),
+            default => throw new \Exception(
+                "Driver de banco não suportado: '{$driver}'. Configure DRIVER como 'mysql' ou 'pgsql'."
+            ),
+        };
     }
 
     public function addColumn(column $column)
@@ -54,6 +57,14 @@ class Table implements TableInterface
     public function create()
     {
         $this->table->create();
+    }
+
+    /**
+     * Recria a tabela do zero, DESCARTANDO os dados existentes.
+     */
+    public function recreate()
+    {
+        $this->table->recreate();
     }
 
     public function update()

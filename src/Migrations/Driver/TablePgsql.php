@@ -284,13 +284,28 @@ class TablePgsql implements Table
 
     public function create()
     {
+        $this->createTable(false);
+    }
+
+    /**
+     * Recria a tabela do zero, DESCARTANDO os dados existentes.
+     *
+     * Operação destrutiva e por isso explícita: create() nunca remove a tabela.
+     */
+    public function recreate()
+    {
+        $this->createTable(true);
+    }
+
+    private function createTable(bool $dropIfExists): void
+    {
         try {
             // Extrai o schema atual da tabela
             $currentSchema = $this->schemaExtractor->extractTableSchema($this);
-            
+
             // Executa a criação da tabela
-            $this->executeCreateTable();
-            
+            $this->executeCreateTable($dropIfExists);
+
             // Salva o schema nas tabelas de rastreamento
             $this->schemaTracker->saveTableSchema(
                 $this->table,
@@ -300,7 +315,7 @@ class TablePgsql implements Table
                 $currentSchema['constraints'],
                 $currentSchema['foreign_keys']
             );
-            
+
         } catch (Exception $e) {
             throw new Exception("Erro ao criar tabela {$this->table}: " . $e->getMessage());
         }
@@ -309,9 +324,15 @@ class TablePgsql implements Table
     /**
      * Executa a criação física da tabela
      */
-    private function executeCreateTable(): void
+    private function executeCreateTable(bool $dropIfExists = false): void
     {
-        $sql = "SET session_replication_role = 'replica'; DROP TABLE IF EXISTS {$this->table};CREATE TABLE IF NOT EXISTS {$this->table}(";
+        $sql = "SET session_replication_role = 'replica';";
+
+        if ($dropIfExists) {
+            $sql .= "DROP TABLE IF EXISTS {$this->table};";
+        }
+
+        $sql .= "CREATE TABLE IF NOT EXISTS {$this->table}(";
         foreach ($this->columns as $column) {
             $sql .= implode(",", array_filter($column->columnSql));
         }
@@ -336,13 +357,17 @@ class TablePgsql implements Table
             $sql .= $constraint["sql"];
         }
 
-        $sql = str_replace(",)", ")", $sql) . " SET session_replication_role = 'origin';";
+        $sql = str_replace(",)", ")", $sql);
 
-        $instructions = explode(";", $sql);
-        foreach ($instructions as $query) {
-            if ($query) {
-                $this->pdo->exec($query);
+        try {
+            foreach (explode(";", $sql) as $query) {
+                if (trim($query)) {
+                    $this->pdo->exec($query);
+                }
             }
+        } finally {
+            // Restaura o modo de replicação mesmo se a criação falhar no meio
+            $this->pdo->exec("SET session_replication_role = 'origin'");
         }
     }
 

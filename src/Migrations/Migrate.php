@@ -11,6 +11,11 @@ class Migrate
    /**
     * Executa as migrações e seeds de todas as tabelas
     *
+    * Atenção: em MySQL, comandos DDL provocam commit implícito, então a transação
+    * aberta aqui só protege de fato os seeds e os bancos que suportam DDL
+    * transacional (PostgreSQL). Uma migração interrompida em MySQL pode deixar o
+    * schema parcialmente aplicado.
+    *
     * @param bool $recreate Indica se as tabelas devem ser recriadas
     * @return void
     * @throws \Exception
@@ -28,8 +33,22 @@ class Migrate
 
          connection::beginTransaction();
 
-         $tableFiles = scandir(Config::getPathModel());
-         $allCreatedTableInstances = [];
+         $pathModel = Config::getPathModel();
+
+         if (!$pathModel || !is_dir($pathModel)) {
+            throw new Exception("Diretório de models não encontrado: '{$pathModel}'. Configure PATH_MODEL no .env.");
+         }
+
+         $tableFiles = scandir($pathModel);
+
+         if ($tableFiles === false) {
+            throw new Exception("Não foi possível ler o diretório de models: {$pathModel}");
+         }
+
+         // Ordem estável para que a migração seja reprodutível entre ambientes
+         sort($tableFiles, SORT_STRING);
+
+         $allTableInstances = [];
 
          foreach ($tableFiles as $tableFile) {
 
@@ -43,12 +62,13 @@ class Migrate
                $tableInstance = $className::table();
                if (!$tableInstance->exists()) {
                   $tableInstance->create();
-                  $allCreatedTableInstances[] = $tableInstance;
                   echo "Criando " . $tableInstance->getTable() . PHP_EOL;
                } else {
                   $tableInstance->update();
                   echo "Atualizando " . $tableInstance->getTable() . PHP_EOL;
                }
+
+               $allTableInstances[] = $tableInstance;
 
                if (method_exists($className, "seed")) {
                   $className::seed();
@@ -56,14 +76,16 @@ class Migrate
             }
          }
 
-         foreach ($allCreatedTableInstances as $instance) {
+         // FKs são aplicadas depois de todas as tabelas existirem, e valem tanto
+         // para as criadas agora quanto para as que já existiam.
+         foreach ($allTableInstances as $instance) {
             $instance->addForeignKeytoTable();
             echo "Adicionando FK " . $instance->getTable() . PHP_EOL;
          }
 
          connection::commit();
       } catch (\Exception $e) {
-         //connection::rollBack();
+         connection::rollBack();
          echo "Erro durante a migração: " . $e->getMessage() . PHP_EOL;
          throw $e;
       }
@@ -89,6 +111,9 @@ class Migrate
 
    public function recreateDatabase()
    {
+      // O banco não pode ser removido enquanto houver sessão aberta nele.
+      Connection::close();
+
       if (Config::getDriver() == "mysql") {
          $dsn = sprintf(
             Config::getDriver() . ':host=%s;port=%s;charset=%s',
@@ -106,15 +131,26 @@ class Migrate
       $pdo = new \PDO($dsn, Config::getUser(), Config::getPassword());
       $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
-      try {
-         $sql = $pdo->prepare("DROP DATABASE IF EXISTS " . Config::getDbName());
-         $sql->execute();
+      $database = $this->quoteDatabaseName(Config::getDbName());
 
-         $sql = $pdo->prepare("CREATE DATABASE " . Config::getDbName());
-         $sql->execute();
+      try {
+         $pdo->exec("DROP DATABASE IF EXISTS " . $database);
+         $pdo->exec("CREATE DATABASE " . $database);
       } catch (\PDOException $e) {
-         echo "Erro ao criar banco de dados: " . $e->getMessage();
+         throw new Exception("Erro ao recriar o banco de dados: " . $e->getMessage(), 0, $e);
       }
+   }
+
+   /**
+    * Valida e delimita o nome do banco, que não pode ser parametrizado pelo PDO.
+    */
+   private function quoteDatabaseName(string $name): string
+   {
+      if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
+         throw new Exception("Nome de banco de dados inválido: {$name}");
+      }
+
+      return Config::getDriver() === 'mysql' ? "`{$name}`" : "\"{$name}\"";
    }
 
    private function isValidModelClass(string $className): bool
