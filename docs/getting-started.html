@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Instalação e primeiro schema com NeoORM."><title>Começar — NeoORM</title><link rel="stylesheet" href="assets/site.css"></head>
+<body><a class="skip" href="#conteudo">Ir para o conteúdo</a><header class="site-header"><a class="brand" href="index.html"><strong>NeoORM</strong><span>PHP · MYSQL · PGSQL</span></a><nav aria-label="Navegação principal"><a aria-current="page" href="getting-started.html">Começar</a><a href="schema.html">Schema</a><a href="queries.html">Consultas</a><a href="migrations.html">Migrações</a><a href="reference.html">Referência</a></nav><input class="search" data-doc-search aria-label="Buscar no repositório" placeholder="Buscar no GitHub" type="search"></header>
+<div class="shell"><aside class="sidebar" aria-label="Nesta documentação"><div class="group"><p>Introdução</p><a aria-current="page" href="getting-started.html">Começar</a><a href="schema.html">Schema e tipos</a><a href="queries.html">Consultas</a><a href="migrations.html">Migrações</a><a href="reference.html">Referência</a></div><div class="group"><p>Projeto</p><a href="https://github.com/DiogoGraciano/NeoORM">Repositório</a><a href="https://github.com/DiogoGraciano/NeoORM/blob/main/UPGRADE.md">Upgrade 1.x → 2.0</a></div></aside>
+<main class="article" id="conteudo"><p class="eyebrow">Introdução</p><h1>Comece com um schema pequeno e verificável</h1><p class="lead">Em NeoORM, você declara tabelas como classes PHP, gera as referências tipadas e então consulta por meio de uma conexão explícita. O processo não depende do banco até a hora de aplicar a migração.</p>
+
+<h2 id="requisitos">Requisitos</h2><ul><li>PHP <strong>8.4 ou superior</strong>;</li><li>as extensões <code>pdo</code>, <code>json</code> e <code>mbstring</code>;</li><li>MySQL ou PostgreSQL quando for executar migrações ou consultas.</li></ul>
+<h2 id="instalar">1. Instale o pacote</h2><pre><code>composer require diogodg/neoorm</code></pre><p>O executável instalado pelo Composer fica em <code>vendor/bin/neoorm</code>. Em um projeto NeoFramework, os mesmos comandos também estão disponíveis com <code>php neof</code>.</p>
+<h2 id="configurar">2. Configure o ambiente</h2><p>Crie um <code>.env</code> na raiz do projeto. A biblioteca procura a raiz pelo <code>composer.json</code>; por isso os caminhos relativos abaixo são estáveis mesmo se o CLI for executado de uma subpasta.</p><pre><code>DRIVER=mysql                 # mysql ou pgsql
+DBHOST=localhost
+DBPORT=3306
+DBNAME=app
+DBUSER=root
+DBPASSWORD=
+DBCHARSET=utf8mb4            # MySQL
+DBSCHEMA=public              # PostgreSQL; opcional
+
+# Estas chaves são opcionais; os valores mostrados são os padrões.
+PATH_MODEL=./App/Models
+MODEL_NAMESPACE=App\Models
+PATH_GENERATED=./App/Models/Generated
+GENERATED_NAMESPACE=App\Models\Generated
+PATH_SEEDS=./App/Seeders
+SEEDER_NAMESPACE=App\Seeders
+PATH_MIGRATIONS=./Migrations
+MIGRATIONS_TABLE=_neoorm_migrations
+MIGRATIONS_STRICT=true
+ENVIRONMENT=dev</code></pre><div class="callout"><p><strong>Precedência:</strong> uma variável em <code>$_ENV</code> ou <code>$_SERVER</code> vence o valor do arquivo <code>.env</code>. Uma chave de caminho ou namespace vazia, como <code>PATH_MODEL=</code>, usa o padrão.</p></div>
+
+<h2 id="model">3. Declare um model</h2><p>O model é a fonte de verdade do schema. Ele não é Active Record: não representa uma linha, não possui <code>get()</code> ou <code>store()</code> e não conecta ao banco quando <code>table()</code> é chamado.</p><pre><code>&lt;?php
+
+namespace App\Models;
+
+use App\Models\Generated\UsersTable;
+use Diogodg\Neoorm\Abstract\Model;
+use Diogodg\Neoorm\Migrations\Col;
+use Diogodg\Neoorm\Migrations\Table;
+
+/** @extends Model&lt;UsersTable&gt; */
+final class Users extends Model
+{
+    public const table = 'users';
+
+    public static function table(): Table
+    {
+        return Table::make(self::table, comment: 'Application users')
+            -&gt;columns([
+                'id'         =&gt; Col::id(),
+                'name'       =&gt; Col::varchar(120)-&gt;notNull(),
+                'email'      =&gt; Col::varchar(255)-&gt;notNull()-&gt;unique(),
+                'active'     =&gt; Col::boolean()-&gt;notNull()-&gt;default(true),
+                'created_at' =&gt; Col::timestamp()-&gt;notNull(),
+            ]);
+    }
+}</code></pre><p>A anotação <code>@extends Model&lt;UsersTable&gt;</code> dá o tipo concreto a <code>Users::ref()</code>. Ela referencia um arquivo que ainda não existe de propósito: o gerador precisa carregar os models antes de criar <code>Generated/</code>.</p>
+
+<h2 id="gerar">4. Gere o código tipado</h2><pre><code>vendor/bin/neoorm generate:types</code></pre><p>Esse comando lê os models e cria, no diretório configurado em <code>PATH_GENERATED</code>:</p><pre><code>App/Models/Generated/
+  Tables.php              # Tables::users()
+  UsersTable.php          # propriedades de coluna tipadas
+  Rows/UsersRow.php       # linha readonly hidratada
+  Inserts/UsersInsert.php # payload de insert por argumentos nomeados
+  Enums/...               # enum PHP quando há coluna ENUM</code></pre><p>Não há conexão nessa etapa. Comite esse diretório junto aos models e verifique-o no CI:</p><pre><code>vendor/bin/neoorm generate:types --check</code></pre><p><code>--check</code> não escreve arquivos e retorna código 1 quando houver drift no código gerado ou na anotação <code>@extends</code>.</p>
+
+<h2 id="migrar">5. Versione e aplique o schema</h2><pre><code>vendor/bin/neoorm migration:generate --name=initial
+vendor/bin/neoorm migration:up
+vendor/bin/neoorm db:check</code></pre><p>O primeiro comando gera SQL e snapshots dentro de <code>Migrations/mysql/</code> ou <code>Migrations/pgsql/</code>, sem abrir conexão. O segundo aplica as migrações pendentes. O terceiro confere se models, snapshot e banco estão em acordo.</p>
+
+<h2 id="consultar">6. Faça uma consulta</h2><pre><code>&lt;?php
+
+use App\Models\Generated\Tables;
+use Diogodg\Neoorm\Query\Database;
+use function Diogodg\Neoorm\Query\{eq, desc};
+
+$db = Database::fromConfig();
+$users = Tables::users();
+
+$active = $db-&gt;select()-&gt;from($users)
+    -&gt;where(eq($users-&gt;active, true))
+    -&gt;orderBy(desc($users-&gt;created_at))
+    -&gt;limit(20)
+    -&gt;all(); // list&lt;UsersRow&gt;</code></pre><p>A partir desse ponto, <code>$active[0]-&gt;email</code> é uma propriedade conhecida pela IDE e pelo PHPStan. Veja <a href="queries.html">Consultas</a> para filtros, joins, escrita e transações.</p>
+
+<div class="callout warning"><p><strong>Produção:</strong> mantenha <code>ENVIRONMENT=prod</code>. Nesse modo, <code>db:push</code> e <code>db:reset</code> são bloqueados. Aplique somente o histórico de migrações revisado.</p></div>
+</main><aside class="toc" aria-label="Nesta página"><p>Nesta página</p><a href="#requisitos">Requisitos</a><a href="#instalar">Instalar</a><a href="#configurar">Configuração</a><a href="#model">Model</a><a href="#gerar">Tipos</a><a href="#migrar">Migrações</a><a href="#consultar">Consulta</a></aside></div><footer class="site-footer">NeoORM · MIT License · <a href="https://github.com/DiogoGraciano/NeoORM">GitHub</a></footer><script src="assets/site.js"></script></body></html>

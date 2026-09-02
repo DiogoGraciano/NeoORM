@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Documentação oficial do NeoORM: models, consultas tipadas, migrações e geração de código para PHP.">
+  <title>NeoORM — documentação</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#conteudo">Ir para o conteúdo</a>
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="NeoORM, início"><strong>NeoORM</strong><span>PHP · MYSQL · PGSQL</span></a>
+    <nav aria-label="Navegação principal">
+      <a href="getting-started.html">Começar</a><a href="schema.html">Schema</a><a href="queries.html">Consultas</a><a href="migrations.html">Migrações</a><a href="reference.html">Referência</a>
+    </nav>
+    <input class="search" data-doc-search aria-label="Buscar no repositório" placeholder="Buscar no GitHub" type="search">
+  </header>
+  <main id="conteudo">
+    <section class="hero">
+      <div class="hero-inner">
+        <p class="eyebrow">Documentação · versão 2</p>
+        <h1>Dados explícitos. Tipos que chegam até a IDE.</h1>
+        <p>NeoORM é um data mapper para PHP 8.4+ com schema declarado em código, consultas tipadas e migrações versionadas para MySQL e PostgreSQL.</p>
+        <div class="hero-actions"><a class="button" href="getting-started.html">Começar em 5 minutos</a><a class="button ghost" href="https://github.com/DiogoGraciano/NeoORM">Ver no GitHub</a></div>
+      </div>
+    </section>
+    <section class="home">
+      <h2>O que você controla</h2>
+      <div class="flow" aria-label="Fluxo do NeoORM"><div>Models<br><small>schema em código</small></div><div>Tipos gerados<br><small>tabelas, linhas e inserts</small></div><div>Queries<br><small>binds e SQL por dialeto</small></div><div>Migrações<br><small>histórico revisável</small></div></div>
+      <div class="cards">
+        <a class="card" href="getting-started.html"><h3>Primeiro projeto</h3><p>Instale, configure a conexão, declare uma tabela e gere os tipos.</p></a>
+        <a class="card" href="schema.html"><h3>Schema e código gerado</h3><p>Colunas imutáveis, constraints, relações, seeders e DTOs.</p></a>
+        <a class="card" href="queries.html"><h3>Consultas tipadas</h3><p>Select, expressões, joins, escrita e transações com savepoints.</p></a>
+        <a class="card" href="migrations.html"><h3>Migrações seguras</h3><p>Snapshots, revisão de SQL, detecção de drift e diferenças entre dialetos.</p></a>
+        <a class="card" href="reference.html"><h3>Referência do CLI</h3><p>Todos os comandos, opções, configuração e contratos de tipos.</p></a>
+        <a class="card" href="https://github.com/DiogoGraciano/NeoORM/blob/main/UPGRADE.md"><h3>Migrar da 1.x</h3><p>O mapa completo da API antiga para a arquitetura 2.0.</p></a>
+      </div>
+      <h2>Princípios de projeto</h2>
+      <p>Um model descreve a tabela; ele não abre conexão, não representa linha e não executa consulta. A biblioteca separa schema, acesso a dados e dados iniciais para que cada mudança seja rastreável e verificável.</p>
+      <div class="callout"><p><strong>Suporte:</strong> MySQL e PostgreSQL. A API preserva o mesmo contrato de resultados nos dois dialetos sempre que possível; onde o SQL diverge, o compilador cuida da diferença.</p></div>
+    </section>
+  </main>
+  <footer class="site-footer">NeoORM · MIT License · <a href="https://github.com/DiogoGraciano/NeoORM">GitHub</a></footer>
+  <script src="assets/site.js"></script>
+</body>
+</html>

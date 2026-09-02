@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Migrações versionadas, snapshots e detecção de drift do NeoORM."><title>Migrações — NeoORM</title><link rel="stylesheet" href="assets/site.css"></head>
+<body><a class="skip" href="#conteudo">Ir para o conteúdo</a><header class="site-header"><a class="brand" href="index.html"><strong>NeoORM</strong><span>PHP · MYSQL · PGSQL</span></a><nav aria-label="Navegação principal"><a href="getting-started.html">Começar</a><a href="schema.html">Schema</a><a href="queries.html">Consultas</a><a aria-current="page" href="migrations.html">Migrações</a><a href="reference.html">Referência</a></nav><input class="search" data-doc-search aria-label="Buscar no repositório" placeholder="Buscar no GitHub" type="search"></header>
+<div class="shell"><aside class="sidebar" aria-label="Nesta documentação"><div class="group"><p>Introdução</p><a href="getting-started.html">Começar</a><a href="schema.html">Schema e tipos</a><a href="queries.html">Consultas</a><a aria-current="page" href="migrations.html">Migrações</a><a href="reference.html">Referência</a></div><div class="group"><p>Projeto</p><a href="https://github.com/DiogoGraciano/NeoORM">Repositório</a><a href="https://github.com/DiogoGraciano/NeoORM/blob/main/UPGRADE.md">Upgrade 1.x → 2.0</a></div></aside>
+<main class="article" id="conteudo"><p class="eyebrow">Histórico do schema</p><h1>Mude o banco por arquivos que podem ser revisados</h1><p class="lead">Models descrevem o estado desejado. Migrações registram a transição entre estados. O NeoORM compara snapshots, gera SQL específico por dialeto e detecta divergências antes de um deploy.</p>
+<h2 id="workflow">Fluxo recomendado</h2><div class="steps"><ol><li>Altere um ou mais models.</li><li>Rode <code>generate:types</code> e revise o código gerado.</li><li>Gere a migração, revise o SQL, o journal e o snapshot.</li><li>Aplique localmente com <code>migration:up</code>.</li><li>Rode <code>db:check --strict</code> e comite todos os arquivos.</li></ol></div><pre><code>vendor/bin/neoorm generate:types
+vendor/bin/neoorm migration:generate --name=add_slug
+vendor/bin/neoorm migration:up
+vendor/bin/neoorm db:check --strict</code></pre><p><code>migration:generate</code> não conecta ao banco: ele compara arquivos JSON e produz SQL. Isso permite revisar a alteração e executá-la no CI sem serviço de banco.</p>
+<h2 id="layout">O que entra no repositório</h2><pre><code>Migrations/
+  mysql/
+    0000_initial.sql
+    0001_add_slug.sql
+    journal.json
+    meta/0000_snapshot.json
+    meta/0001_snapshot.json
+  pgsql/
+    ... mesmo layout, SQL próprio do dialeto</code></pre><p>Todos esses arquivos são código-fonte. O snapshot é a entrada do differ; sem ele, dois desenvolvedores podem gerar a mesma próxima posição com conteúdos diferentes. Um diretório por dialeto é necessário porque engine, collation e parte do DDL não existem nos dois bancos.</p>
+<h2 id="generate">Gerar e renomear</h2><pre><code># Gera SQL, journal e snapshot. Recusa operações destrutivas por padrão.
+vendor/bin/neoorm migration:generate --name=add_slug
+
+# Cria um marco sem diferenças de schema.
+vendor/bin/neoorm migration:generate --name=backfill_status --empty
+
+# Informa um rename para preservar dados.
+vendor/bin/neoorm migration:generate --name=rename_email \
+  --rename=users.email_address:email
+
+# Prévia sem escrever arquivos.
+vendor/bin/neoorm migration:generate --name=preview --dry-run</code></pre><p><code>--rename</code> pode ser repetido. Para coluna, use <code>tabela.antiga:nova</code>; para tabela, use <code>antiga:nova</code>. Revise todo SQL de operações destrutivas e use <code>--allow-destructive</code> somente quando a perda de dados for deliberada.</p>
+<h2 id="apply">Aplicar e auditar</h2><pre><code>vendor/bin/neoorm migration:up
+vendor/bin/neoorm migration:up --to=add_slug
+vendor/bin/neoorm migration:up --step=1
+vendor/bin/neoorm migration:up --dry-run
+
+vendor/bin/neoorm migration:status
+vendor/bin/neoorm db:check
+vendor/bin/neoorm db:check --strict</code></pre><p><code>migration:up</code> aceita nenhuma, uma ou várias migrações pendentes. Se não houver pendências, sai com sucesso — comportamento importante em deploys repetidos. <code>migration:status</code> retorna código 1 em caso de arquivo ausente, migração alterada ou aplicação interrompida. <code>db:check</code> compara models, snapshot e banco; <code>--strict</code> também reprova tabelas no banco que nenhum model declara.</p>
+<h2 id="dev">Atalhos de desenvolvimento</h2><pre><code># Converge o banco direto com os models; não cria arquivo de histórico.
+vendor/bin/neoorm db:push
+vendor/bin/neoorm db:push --dry-run
+
+# Lê o schema atual; sem --write-to, imprime JSON em stdout.
+vendor/bin/neoorm db:pull --write-to=database-snapshot.json
+vendor/bin/neoorm db:pull --only-declared
+
+# Destrói e recria o banco configurado; desenvolvimento apenas.
+vendor/bin/neoorm db:reset --force --seed
+vendor/bin/neoorm db:reset --confirm=nome_do_banco</code></pre><div class="callout warning"><p><strong><code>db:push</code> não é uma estratégia de produção.</strong> Ele é útil no ciclo local, quando o model muda rapidamente, mas não cria artefato para revisão nem para reproduzir outro ambiente. Em <code>ENVIRONMENT=prod</code>, <code>db:push</code> e <code>db:reset</code> são recusados.</p></div>
+<h2 id="atomicity">Atomicidade por banco</h2><table><thead><tr><th>Banco</th><th>Garantia</th><th>Se uma migration falhar</th></tr></thead><tbody><tr><td>PostgreSQL</td><td>DDL transacional</td><td>O DDL e seu registro fazem commit juntos, ou nada é aplicado.</td></tr><tr><td>MySQL</td><td>DDL com commit implícito</td><td>O runner grava <code>applied_index</code> após cada statement; a próxima execução retoma no ponto correto.</td></tr></tbody></table><p>Essa diferença é intencionalmente visível. O NeoORM não finge que DDL do MySQL pode ser atômico; ele torna uma falha diagnosticável e retomável.</p>
+<h2 id="forward">Sem <code>down</code></h2><p>Não há migração automática de rollback. Um <code>DROP COLUMN</code> revertido recria a coluna, mas não os dados perdidos; chamar isso de reversão é enganar o operador. Em desenvolvimento, use <code>db:reset</code>. Em produção, crie uma migração corretiva para frente.</p>
+<h2 id="ci">CI mínimo</h2><pre><code>vendor/bin/neoorm generate:types --check
+vendor/bin/neoorm migration:status
+vendor/bin/neoorm db:check --strict</code></pre><p>Inclua um banco de teste no pipeline para os dois últimos comandos. Para testar a biblioteca, o repositório disponibiliza <code>composer test</code>, <code>composer test:unit</code>, <code>composer test:types</code> e suites específicas dos dois dialetos.</p>
+</main><aside class="toc" aria-label="Nesta página"><p>Nesta página</p><a href="#workflow">Fluxo</a><a href="#layout">Arquivos</a><a href="#generate">Gerar</a><a href="#apply">Aplicar</a><a href="#dev">Desenvolvimento</a><a href="#atomicity">Atomicidade</a><a href="#forward">Sem down</a><a href="#ci">CI</a></aside></div><footer class="site-footer">NeoORM · MIT License · <a href="https://github.com/DiogoGraciano/NeoORM">GitHub</a></footer><script src="assets/site.js"></script></body></html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Models, colunas, constraints, seeders e código gerado do NeoORM."><title>Schema e tipos — NeoORM</title><link rel="stylesheet" href="assets/site.css"></head>
+<body><a class="skip" href="#conteudo">Ir para o conteúdo</a><header class="site-header"><a class="brand" href="index.html"><strong>NeoORM</strong><span>PHP · MYSQL · PGSQL</span></a><nav aria-label="Navegação principal"><a href="getting-started.html">Começar</a><a aria-current="page" href="schema.html">Schema</a><a href="queries.html">Consultas</a><a href="migrations.html">Migrações</a><a href="reference.html">Referência</a></nav><input class="search" data-doc-search aria-label="Buscar no repositório" placeholder="Buscar no GitHub" type="search"></header>
+<div class="shell"><aside class="sidebar" aria-label="Nesta documentação"><div class="group"><p>Introdução</p><a href="getting-started.html">Começar</a><a aria-current="page" href="schema.html">Schema e tipos</a><a href="queries.html">Consultas</a><a href="migrations.html">Migrações</a><a href="reference.html">Referência</a></div><div class="group"><p>Projeto</p><a href="https://github.com/DiogoGraciano/NeoORM">Repositório</a><a href="https://github.com/DiogoGraciano/NeoORM/blob/main/UPGRADE.md">Upgrade 1.x → 2.0</a></div></aside>
+<main class="article" id="conteudo"><p class="eyebrow">Fonte de verdade</p><h1>Descreva a tabela uma vez</h1><p class="lead">O schema fica no método estático <code>table()</code>. Cada coluna é um valor imutável e o model é validado antes de migrar ou gerar tipos.</p>
+<h2 id="columns">Colunas e modificadores</h2><p><code>Table::columns()</code> recebe um mapa <code>nome =&gt; Col</code>. Isso impede que o nome seja repetido no construtor e elimina divergência entre chave e coluna. As fábricas cobrem os tipos comuns e <code>Col::type('...')</code> existe como escape para tipos específicos.</p><pre><code>return Table::make('product')
+    -&gt;columns([
+        'id'       =&gt; Col::bigId(),
+        'sku'      =&gt; Col::varchar(32)-&gt;notNull()-&gt;unique(),
+        'price'    =&gt; Col::decimal(19, 4)-&gt;notNull()-&gt;default(0),
+        'metadata' =&gt; Col::json(),
+        'enabled'  =&gt; Col::boolean()-&gt;notNull()-&gt;default(true),
+    ]);</code></pre>
+<table><thead><tr><th>Grupo</th><th>Fábricas</th></tr></thead><tbody><tr><td>Inteiros</td><td><code>tinyInt</code>, <code>smallInt</code>, <code>mediumInt</code>, <code>int</code>, <code>bigInt</code>, <code>id</code>, <code>bigId</code>, <code>fk</code></td></tr><tr><td>Números</td><td><code>decimal(p, s)</code>, <code>float</code>, <code>double</code>, <code>boolean</code></td></tr><tr><td>Texto</td><td><code>char(n)</code>, <code>varchar(n)</code>, <code>tinyText</code>, <code>text</code>, <code>mediumText</code>, <code>longText</code></td></tr><tr><td>Tempo</td><td><code>date</code>, <code>time</code>, <code>dateTime</code>, <code>timestamp</code>, <code>timestampTz</code>, <code>year</code></td></tr><tr><td>Especial</td><td><code>json</code>, <code>jsonb</code>, <code>uuid</code>, <code>enum(values)</code></td></tr><tr><td>Binário</td><td><code>binary(n)</code>, <code>varBinary(n)</code>, <code>tinyBlob</code>, <code>blob</code>, <code>mediumBlob</code>, <code>longBlob</code>, <code>bytea</code></td></tr></tbody></table>
+<p>Os modificadores disponíveis são <code>notNull()</code>, <code>nullable()</code>, <code>primary()</code>, <code>unique()</code>, <code>autoIncrement()</code>, <code>unsigned()</code>, <code>index()</code>, <code>default()</code>, <code>defaultRaw()</code>, <code>defaultNull()</code>, <code>comment()</code>, <code>collation()</code> e <code>references()</code>.</p><pre><code>$money = Col::decimal(19, 4)-&gt;notNull()-&gt;default(0);
+
+'balance' =&gt; $money,
+'credit'  =&gt; $money-&gt;comment('Credit limit'), // $money não muda</code></pre>
+<h2 id="constraints">Chaves, índices e relações</h2><p>Regras que abrangem mais de uma coluna pertencem à tabela. A ordem das chamadas não muda o resultado: a validação ocorre sobre o schema final em <code>build()</code>.</p><pre><code>return Table::make('product_category')
+    -&gt;columns([
+        'product_id'  =&gt; Col::int()-&gt;notNull(),
+        'category_id' =&gt; Col::int()-&gt;notNull(),
+        'score'       =&gt; Col::decimal(3, 1),
+    ])
+    -&gt;primary(['product_id', 'category_id'])
+    -&gt;unique('product_category_score_unique', ['product_id', 'score'])
+    -&gt;index('product_category_score_index', ['score'])
+    -&gt;check('score &gt;= 0')
+    -&gt;foreignKey('category', ['category_id'], ['id'])
+    -&gt;timestamps();</code></pre><p>Para relação de uma só coluna, prefira <code>references(OtherModel::class)</code>. A classe é verificável estaticamente e dá ao NeoORM o nome correto da tabela declarada no outro model.</p>
+<h2 id="models">Models em subpastas</h2><p>O diretório de models é percorrido recursivamente. A subpasta vira um segmento de namespace pela regra PSR-4 e o diretório <code>Generated/</code> é ignorado pelo loader.</p><pre><code>App/Models/
+  Country.php                 # App\Models\Country
+  Billing/Invoice.php         # App\Models\Billing\Invoice
+  Generated/                  # ignorado</code></pre>
+<h2 id="generated">O que o gerador entrega</h2><p><code>generate:types</code> cria tabelas com propriedades de coluna, DTOs readonly de linha, payloads de insert e enums PHP. As propriedades preservam o nome exato da coluna em <code>snake_case</code>; transformar nomes para camelCase criaria colisões ambíguas.</p><pre><code>$u = Tables::users();
+$u-&gt;email; // ColumnRef conhecida pela IDE
+
+$row = $db-&gt;select()-&gt;from($u)-&gt;one();
+// ?UsersRow; $row?-&gt;created_at é DateTimeImmutable</code></pre><div class="callout"><p><strong>Inclua o gerado no versionamento.</strong> Ele é código-fonte revisável. Use <code>generate:types --check</code> como gate de CI para impedir que models e tipos se afastem.</p></div>
+<h2 id="seeders">Seeders</h2><p>Dados iniciais vivem em <code>PATH_SEEDS</code>, um seeder por tabela. A separação deixa claro que mudanças de dados e de schema têm ciclos distintos.</p><pre><code>final class CountrySeeder extends Seeder
+{
+    public static function table(): string { return Country::table; }
+
+    public function run(Executor $db): void
+    {
+        if ($db-&gt;select()-&gt;from(Tables::country())-&gt;count() &gt; 0) {
+            return;
+        }
+
+        $db-&gt;insert(Tables::country())
+            -&gt;values(new CountryInsert(name: 'Brasil'))
+            -&gt;execute();
+    }
+}</code></pre><p><code>db:seed</code> executa seeders na ordem do grafo de chaves estrangeiras e dentro de uma transação. Cada seeder deve ser idempotente: o runner não registra execuções anteriores. Se houver duas classes para uma tabela, ou um seeder apontar para tabela inexistente, o comando falha com a lista de problemas.</p><pre><code>vendor/bin/neoorm db:seed
+vendor/bin/neoorm db:seed --tables=country,state</code></pre>
+</main><aside class="toc" aria-label="Nesta página"><p>Nesta página</p><a href="#columns">Colunas</a><a href="#constraints">Constraints</a><a href="#models">Subpastas</a><a href="#generated">Tipos gerados</a><a href="#seeders">Seeders</a></aside></div><footer class="site-footer">NeoORM · MIT License · <a href="https://github.com/DiogoGraciano/NeoORM">GitHub</a></footer><script src="assets/site.js"></script></body></html>

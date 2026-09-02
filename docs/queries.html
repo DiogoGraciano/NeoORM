@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Consultas tipadas, expressões, escrita e transações no NeoORM."><title>Consultas — NeoORM</title><link rel="stylesheet" href="assets/site.css"></head>
+<body><a class="skip" href="#conteudo">Ir para o conteúdo</a><header class="site-header"><a class="brand" href="index.html"><strong>NeoORM</strong><span>PHP · MYSQL · PGSQL</span></a><nav aria-label="Navegação principal"><a href="getting-started.html">Começar</a><a href="schema.html">Schema</a><a aria-current="page" href="queries.html">Consultas</a><a href="migrations.html">Migrações</a><a href="reference.html">Referência</a></nav><input class="search" data-doc-search aria-label="Buscar no repositório" placeholder="Buscar no GitHub" type="search"></header>
+<div class="shell"><aside class="sidebar" aria-label="Nesta documentação"><div class="group"><p>Introdução</p><a href="getting-started.html">Começar</a><a href="schema.html">Schema e tipos</a><a aria-current="page" href="queries.html">Consultas</a><a href="migrations.html">Migrações</a><a href="reference.html">Referência</a></div><div class="group"><p>Projeto</p><a href="https://github.com/DiogoGraciano/NeoORM">Repositório</a><a href="https://github.com/DiogoGraciano/NeoORM/blob/main/UPGRADE.md">Upgrade 1.x → 2.0</a></div></aside>
+<main class="article" id="conteudo"><p class="eyebrow">Acesso a dados</p><h1>Consultas que carregam o tipo até a linha</h1><p class="lead">O builder transforma referências de coluna em SQL com binds. Queries de tabela completa hidratam DTOs gerados; seleções parciais assumem explicitamente o tipo <code>array&lt;string, mixed&gt;</code>.</p>
+<h2 id="setup">Conexão e referência de tabela</h2><pre><code>use App\Models\Generated\Tables;
+use Diogodg\Neoorm\Query\Database;
+
+$db = Database::fromConfig();
+$users = Tables::users(); // ou Users::ref()</code></pre><p><code>Database::fromConfig()</code> constrói uma conexão PDO com exceções, prepared statements nativos e UTC como fuso da sessão. O MySQL usa <code>MYSQL_ATTR_FOUND_ROWS</code>, então <code>UPDATE</code> retorna o número de linhas encontradas — igual ao PostgreSQL — mesmo se o valor já fosse igual.</p>
+<h2 id="select">Select</h2><pre><code>use function Diogodg\Neoorm\Query\eq;
+
+$all = $db-&gt;select()-&gt;from($users)-&gt;all();
+$one = $db-&gt;select()-&gt;from($users)-&gt;where(eq($users-&gt;id, 1))-&gt;one();
+$required = $db-&gt;select()-&gt;from($users)-&gt;where(eq($users-&gt;id, 1))-&gt;oneOrFail();
+$total = $db-&gt;select()-&gt;from($users)-&gt;count();
+
+foreach ($db-&gt;select()-&gt;from($users)-&gt;cursor() as $row) {
+    // Generator&lt;UsersRow&gt;, sem materializar todas as linhas
+}</code></pre><table><thead><tr><th>Método</th><th>Retorno</th><th>Uso</th></tr></thead><tbody><tr><td><code>all()</code></td><td><code>list&lt;Row&gt;</code></td><td>Materializa o resultado.</td></tr><tr><td><code>one()</code></td><td><code>?Row</code></td><td>Retorna <code>null</code> quando não há linha.</td></tr><tr><td><code>oneOrFail()</code></td><td><code>Row</code></td><td>Exige resultado e lança em caso de ausência.</td></tr><tr><td><code>count()</code></td><td><code>int</code></td><td>Ignora ordenação e paginação; respeita o conjunto lógico.</td></tr><tr><td><code>cursor()</code></td><td><code>Generator&lt;Row&gt;</code></td><td>Itera em streaming.</td></tr></tbody></table>
+<h2 id="conditions">Condições e expressões</h2><p>Operadores são funções e valores são sempre bind parameters. Para combinar condições, use <code>Op::and()</code>, <code>Op::or()</code> e <code>Op::not()</code>.</p><pre><code>use Diogodg\Neoorm\Query\Op;
+use function Diogodg\Neoorm\Query\{between, eq, gte, ilike, inArray, isNotNull, like, ne, notInArray, sql};
+
+$rows = $db-&gt;select()-&gt;from($users)
+    -&gt;where(Op::and(
+        gte($users-&gt;age, 18),
+        Op::or(ilike($users-&gt;name, 'a%'), inArray($users-&gt;status, ['active', 'trial'])),
+        isNotNull($users-&gt;email),
+    ))
+    -&gt;all();
+
+// Fragmento SQL cru; os argumentos ainda viram binds.
+$longNames = $db-&gt;select()-&gt;from($users)
+    -&gt;where(sql('LENGTH(name) &gt; ?', 10))-&gt;all();</code></pre><p>Estão disponíveis <code>eq</code>, <code>ne</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>like</code>, <code>notLike</code>, <code>ilike</code>, <code>inArray</code>, <code>notInArray</code>, <code>between</code>, <code>notBetween</code>, <code>isNull</code> e <code>isNotNull</code>. <code>ilike()</code> usa <code>ILIKE</code> no PostgreSQL e <code>LOWER(a) LIKE LOWER(b)</code> no MySQL.</p><div class="callout warning"><p><strong>Nulidade é explícita.</strong> <code>eq($column, null)</code> e <code>ne($column, null)</code> lançam cedo, porque <code>= NULL</code> e <code>&lt;&gt; NULL</code> não são verdadeiros em SQL. Use <code>isNull()</code> ou <code>isNotNull()</code>.</p></div>
+<h2 id="shape">Ordenação, paginação e agregação</h2><pre><code>use Diogodg\Neoorm\Query\Func;
+use Diogodg\Neoorm\Query\Expr\{Aliased, NullsPlacement};
+use function Diogodg\Neoorm\Query\{asc, desc, gt};
+
+$page = $db-&gt;select()-&gt;from($users)
+    -&gt;orderBy(desc($users-&gt;created_at, NullsPlacement::Last), asc($users-&gt;name))
+    -&gt;limit(20)-&gt;offset(40)-&gt;all();
+
+$byStatus = $db-&gt;selectFields([$users-&gt;status, new Aliased(Func::count(), 'total')])
+    -&gt;from($users)-&gt;groupBy($users-&gt;status)
+    -&gt;having(gt(Func::count(), 5))-&gt;all();</code></pre><p><code>limit()</code> e <code>offset()</code> recusam valores negativos. No MySQL, <code>NULLS FIRST/LAST</code> é compilado como termo adicional com <code>IS NULL</code> para preservar a semântica do PostgreSQL. Em consultas com <code>GROUP BY</code>, <code>HAVING</code> ou <code>DISTINCT</code>, <code>count()</code> conta as linhas resultantes por subconsulta.</p>
+<h2 id="joins">Joins e seleção parcial</h2><pre><code>$posts = Tables::posts();
+$rows = $db-&gt;selectFields([$users-&gt;id, $users-&gt;name, $posts-&gt;title])
+    -&gt;from($users)
+    -&gt;leftJoin($posts, eq($posts-&gt;author_id, $users-&gt;id))
+    -&gt;all();
+
+$rows[0]['id'];            // coluna da tabela base
+$rows[0]['posts__title'];  // coluna da tabela juntada</code></pre><p>O prefixo <code>{tabela}__{coluna}</code> impede que <code>FETCH_ASSOC</code> silenciosamente sobrescreva chaves homônimas. Uma tabela com alias requalifica suas colunas e torna self-joins possíveis:</p><pre><code>$neighbor = Tables::users('neighbor');
+$db-&gt;selectFields([$users-&gt;id, $neighbor-&gt;id])
+   -&gt;from($users)
+   -&gt;innerJoin($neighbor, eq($neighbor-&gt;manager_id, $users-&gt;id))
+   -&gt;all();</code></pre>
+<h2 id="write">Insert, update e delete</h2><pre><code>use App\Models\Generated\Inserts\UsersInsert;
+
+$db-&gt;insert($users)
+    -&gt;values(new UsersInsert(name: 'Diogo', email: 'd@x.com'))
+    -&gt;execute();
+
+$created = $db-&gt;insert($users)
+    -&gt;values(new UsersInsert(name: 'Ana', email: 'a@x.com'))
+    -&gt;returningOne();
+
+$db-&gt;update($users)-&gt;set(['active' =&gt; false])
+    -&gt;where(eq($users-&gt;id, 1))-&gt;execute();
+$db-&gt;delete($users)-&gt;where(eq($users-&gt;id, 1))-&gt;execute();</code></pre><p><code>returningOne()</code> usa <code>RETURNING</code> no PostgreSQL e <code>lastInsertId()</code> seguido de select no MySQL. Campos de <code>Insert</code> que têm <code>DEFAULT</code> ou auto incremento são opcionais: <code>null</code> omite a coluna, para o banco usar o próprio padrão. Em lote, campos opcionais omitidos em apenas algumas linhas viram <code>DEFAULT</code> nessas linhas.</p><div class="callout warning"><p><strong>Proteção contra escrita acidental:</strong> <code>UPDATE</code> e <code>DELETE</code> sem <code>where()</code> são recusados. Para o caso intencional, declare-o com <code>allowFullTableScan()</code> antes de <code>execute()</code>.</p></div>
+<h2 id="immutable">Builders imutáveis e transações</h2><pre><code>$active = $db-&gt;select()-&gt;from($users)-&gt;where(eq($users-&gt;active, true));
+$firstPage = $active-&gt;limit(20)-&gt;all();
+$total = $active-&gt;count(); // $active não foi alterado
+
+$db-&gt;transaction(function (Tx $tx) use ($users, $posts) {
+    $author = $tx-&gt;insert($users)-&gt;values(new UsersInsert(name: 'Ana'))-&gt;returningOne();
+    $tx-&gt;insert($posts)-&gt;values(new PostsInsert(author_id: $author-&gt;id, title: 'Olá'))-&gt;execute();
+});</code></pre><p>Cada cláusula retorna um novo builder. Transações aninhadas criam savepoints reais; uma falha interna volta até o savepoint sem desfazer o trabalho externo. <code>Tx</code> e <code>Database</code> implementam <code>Executor</code>, portanto repositórios podem depender dessa interface.</p>
+<h2 id="sql">Inspecionar SQL</h2><pre><code>$compiled = $db-&gt;select()-&gt;from($users)-&gt;where(eq($users-&gt;id, 1))-&gt;toSql();
+
+$compiled-&gt;sql;      // SQL com :p0, :p1…
+$compiled-&gt;values(); // ['p0' =&gt; 1]</code></pre>
+</main><aside class="toc" aria-label="Nesta página"><p>Nesta página</p><a href="#setup">Conexão</a><a href="#select">Select</a><a href="#conditions">Condições</a><a href="#shape">Paginação</a><a href="#joins">Joins</a><a href="#write">Escrita</a><a href="#immutable">Transações</a><a href="#sql">SQL</a></aside></div><footer class="site-footer">NeoORM · MIT License · <a href="https://github.com/DiogoGraciano/NeoORM">GitHub</a></footer><script src="assets/site.js"></script></body></html>
