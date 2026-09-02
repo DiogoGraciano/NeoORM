@@ -1,5 +1,13 @@
+# O analisador PHP legado pede ao phpenv que compile PHP 8.4. Esse worker ainda
+# traz libxml 2.9.1, enquanto o PHP 8.4 exige >= 2.9.4. O analisador atual roda
+# no ambiente normal do Scrutinizer e não depende dessa compilação obsoleta.
+checks:
+  php: true
+
 build:
-  # PHP 8.4 requer libxml >= 2.9.4; a imagem padrão antiga tem 2.9.1.
   image: default-jammy
-  environment:
-    php: 8.4.12
+  nodes:
+    analysis:
+      tests:
+        override:
+          - php-scrutinizer-run
