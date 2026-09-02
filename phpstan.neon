@@ -1,0 +1,31 @@
+# Análise estática no nível 8, sobre `src` INTEIRO.
+#
+# A lista de `paths` crescia por fase enquanto `Db.php` e as traits `Db*` existiam:
+# ligá-las teria produzido centenas de erros que ninguém ia consertar, e o ruído
+# faria o gate ser ignorado — que é o mesmo que não ter gate. Com a stack legada
+# removida, não sobrou nada para excluir.
+#
+# `tests/` entra em três pedaços, cada um por um motivo diferente:
+#   - tests/Generated: o código GERADO, e não só o gerador. É PHP válido e
+#     carregável por PSR-4 de propósito, então o analisador confere o que o
+#     usuário vai receber — foi assim que apareceu um `@var ColumnRef<DateTimeImmutable>`
+#     sem o import correspondente, que nenhum teste de runtime pegaria.
+#   - tests/Golden: os goldens do gerador, pelo mesmo motivo.
+#   - tests/Types: a prova dos genéricos, via assertType(). É o único lugar que a
+#     verifica; um erro de docblock não quebra teste nenhum, só degrada o tipo em
+#     silêncio.
+parameters:
+    level: 8
+
+    paths:
+        - src
+        - tests/Generated
+        - tests/Golden
+        - tests/Types
+
+    # O IR normaliza defensivamente a entrada (`array_values()` sobre o que o
+    # docblock promete ser lista) porque quem constrói um `TableDefinition` é
+    # código de aplicação, e docblock não é garantia em runtime. Com esta opção
+    # ligada o analisador acredita no docblock e chama a normalização de inútil —
+    # e removê-la quebraria de verdade quem passar um array com chaves.
+    treatPhpDocTypesAsCertain: false

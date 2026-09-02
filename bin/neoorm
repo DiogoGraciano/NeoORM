@@ -1,0 +1,42 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * O CLI do NeoORM.
+ *
+ * Só o suficiente para achar o autoloader e entregar o `$argv` — o parsing e o despacho
+ * moram em `Console\Application`, onde são testáveis sem processo.
+ *
+ * Sem dependência de pacote de linha de comando: a biblioteca pede apenas `ext-pdo`,
+ * `ext-json` e `ext-mbstring`, e puxar um framework de console para nove subcomandos
+ * inverteria essa relação.
+ */
+
+use Diogodg\Neoorm\Console\Application;
+use Diogodg\Neoorm\Support\Output\EchoOutput;
+
+$autoloads = [
+    __DIR__ . '/../vendor/autoload.php',      // rodando dentro do próprio repositório
+    __DIR__ . '/../../../autoload.php',       // instalado como dependência
+];
+
+foreach ($autoloads as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+
+        break;
+    }
+}
+
+if (!class_exists(Application::class)) {
+    fwrite(STDERR, "Não encontrei o autoloader do Composer.\n");
+
+    exit(1);
+}
+
+/** @var list<string> $argv */
+$argv = $argv ?? [];
+
+exit((new Application(new EchoOutput()))->run($argv));

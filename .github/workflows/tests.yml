@@ -1,0 +1,132 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Uma execução por referência. Um push em cima de outro cancela o anterior em vez de
+# manter duas matrizes disputando os mesmos runners para dizer a mesma coisa.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit (sem banco)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_mysql, pdo_pgsql, json, mbstring
+          coverage: pcov
+
+      - name: Instala dependências
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      # Nenhum serviço de banco neste job, de propósito. A suíte unitária cobre IR,
+      # snapshot, differ, dialetos, runner e o `generate` inteiro, e `UnitTestCase`
+      # derruba qualquer teste que abra socket. Se ela precisar de um servidor para
+      # passar, a regra foi quebrada — e é aqui que isso aparece.
+      - name: Suíte unitária
+        run: composer test:unit
+
+      # Duas execuções com sementes diferentes. Uma passa por sorte; duas, com ordens
+      # distintas, é o que transforma "independente de ordem" numa afirmação verificada
+      # em vez de uma intenção.
+      - name: Suíte unitária, outra ordem
+        run: vendor/bin/phpunit -c phpunit.xml --testsuite unit --random-order-seed=${{ github.run_id }}
+
+      # A única coisa que verifica os genéricos. Um erro de docblock não quebra teste
+      # nenhum: só degrada `list<UsersRow>` para `array<int,object>`, em silêncio.
+      - name: Análise estática
+        run: composer test:types
+
+      - name: Golden files não mudaram
+        run: git diff --exit-code tests/__snapshots__
+
+      # Segundo cinto do drift check: a suíte já compara o gerado com o disco, e isto
+      # pega o caso em que alguém regravou os arquivos sem commitar o diff.
+      - name: DTOs gerados não mudaram
+        run: git diff --exit-code tests/Generated
+
+  integration:
+    name: integração (${{ matrix.dialect }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Sem fail-fast: quando um dialeto quebra, saber se o outro também quebrou é
+      # metade do diagnóstico. Cancelar o segundo job esconde exatamente isso.
+      fail-fast: false
+      matrix:
+        dialect: [pgsql, mysql]
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_neoorm
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test_neoorm
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -proot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # O `<env>` do phpunit não sobrescreve variável já definida, então o host do CI
+      # entra por aqui sem precisar de um arquivo de configuração próprio.
+      DBHOST: 127.0.0.1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_mysql, pdo_pgsql, json, mbstring
+          coverage: none
+
+      - name: Instala dependências
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Integração
+        run: vendor/bin/phpunit -c phpunit-${{ matrix.dialect }}.xml --testsuite integration
+
+      - name: Integração, outra ordem
+        run: vendor/bin/phpunit -c phpunit-${{ matrix.dialect }}.xml --testsuite integration --random-order-seed=${{ github.run_id }}
+
+      # P3: aplica um schema, lê o banco de volta, e afirma que os dois lados batem —
+      # tanto na forma (INT vs INTEGER, comentário que sumiu) quanto na semântica (o
+      # differ não vê diferença). Redundante com o passo de integração acima, e nomeado
+      # à parte porque é o teste que teria pego quase todos os bugs do sistema antigo.
+      - name: P3 — round-trip
+        run: vendor/bin/phpunit -c phpunit-${{ matrix.dialect }}.xml --group roundtrip
+
+      # P4: depois de aplicar, um segundo `generate` tem que sair VAZIO. Um round-trip
+      # só de criação-do-zero passa com os bugs B2 e B4 presentes; é o ciclo que os pega.
+      - name: P4 — convergência
+        run: vendor/bin/phpunit -c phpunit-${{ matrix.dialect }}.xml --group convergence
+
+      # Uma linha verde por bug conhecido do sistema antigo. Redundante com o resto da
+      # suíte, e é o ponto: é esta lista que se olha para acreditar que a reescrita
+      # valeu a pena.
+      - name: Regressões dos bugs legados
+        run: vendor/bin/phpunit -c phpunit-${{ matrix.dialect }}.xml --group regression

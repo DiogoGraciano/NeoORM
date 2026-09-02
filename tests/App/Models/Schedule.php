@@ -3,26 +3,25 @@
 namespace Tests\App\Models;
 
 use Diogodg\Neoorm\Abstract\Model;
+use Diogodg\Neoorm\Migrations\Col;
 use Diogodg\Neoorm\Migrations\Table;
-use Diogodg\Neoorm\Migrations\Column;
+use Tests\Generated\ScheduleTable;
 
-class Schedule extends Model {
+/**
+ * @extends Model<ScheduleTable>
+ */
+class Schedule extends Model
+{
     public const table = "schedule";
 
-    public function __construct() {
-        parent::__construct(self::table,self::class);
-    }
-
-    public static function table() {
-        return (new Table(self::table, comment:"Schedules table"))->isAutoIncrement()
-                ->addColumn((new Column("id", "INT"))->isPrimary()->setComment("Schedule ID"))
-                ->addColumn((new Column("name", "VARCHAR", 120))->isNotNull()->setComment("Schedule name"))
-                ->addColumn((new Column("company_id", "INT"))->isNotNull()->setComment("Company ID"))
-                ->addColumn((new Column("employee_id", "INT"))->setComment("Default employee ID for this schedule"))
-                ->addForeignKey(Employee::table, column:"employee_id");
-    }
-
-    public static function seed() {
-        // Seed method intentionally left empty for tests
+    public static function table(): Table
+    {
+        return Table::make(self::table, comment: "Schedules table")
+            ->columns([
+                'id' => Col::id()->comment("Schedule ID"),
+                'name' => Col::varchar(120)->notNull()->comment("Schedule name"),
+                'company_id' => Col::int()->notNull()->comment("Company ID"),
+                'employee_id' => Col::int()->references(Employee::class)->comment("Default employee ID for this schedule"),
+            ]);
     }
 }

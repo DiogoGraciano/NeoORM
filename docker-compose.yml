@@ -1,10 +1,36 @@
 services:
   postgres:
     image: 'postgres:17'
-    ports:
-      - '5432:5432'
     environment:
       POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      # Sem isto o banco só existia porque o migrate antigo o criava como
+      # superusuário. A suíte nova não exige privilégio de CREATE DATABASE.
+      POSTGRES_DB: test_neoorm
+    ports:
+      # Portas altas de propósito: 5432/3306 costumam estar ocupadas na máquina
+      # de quem desenvolve. Os testes falam pela rede interna, não por estas.
+      - '55432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d test_neoorm']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    networks:
+      - app
+
+  mysql:
+    image: 'mysql:8.0'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test_neoorm
+    ports:
+      - '33306:3306'
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -uroot -proot --silent']
+      interval: 3s
+      timeout: 5s
+      retries: 30
     networks:
       - app
 
@@ -12,21 +38,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - '80:80'
+    # Sem os healthchecks acima havia corrida no startup: o php subia antes dos
+    # bancos aceitarem conexão e a suíte de integração falhava por timing.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     volumes:
       - .:/var/www/html
     working_dir: /var/www/html
-    networks:
-      - app
-
-  mysql:
-    image: 'mysql:8.0'
-    ports:
-      - '3306:3306'
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: neoorm_test 
     networks:
       - app
 

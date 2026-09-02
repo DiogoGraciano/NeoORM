@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Suíte de integração contra PostgreSQL 17.
+
+    Um processo PHPUnit por dialeto, não troca de dialeto no meio do processo:
+    Config é estática com cache próprio e Connection é singleton, então alternar
+    driver exige mexer em $_ENV, $_SERVER, putenv, Config::reset() e
+    Connection::close() na ordem certa — e um teste que esqueça um passo corrompe
+    todos os seguintes, com a falha aparecendo em outro lugar.
+
+    DBHOST vem do <env> mas NÃO sobrescreve uma variável de ambiente já definida
+    (comportamento padrão do PHPUnit), então o CI passa DBHOST=127.0.0.1 sem
+    precisar de um arquivo de configuração próprio.
+
+    executionOrder="random" para todos os casos: cada um semeia os próprios dados
+    no setUp, e ordem aleatória é justamente o critério de aceitação de "não há
+    dependência de ordem oculta".
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory=".phpunit.cache"
+         colors="true"
+         testdox="true"
+         executionOrder="random"
+         resolveDependencies="true"
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         failOnRisky="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="NEOORM_DISABLE_DOTENV" value="1"/>
+        <env name="DRIVER" value="pgsql"/>
+        <env name="DBHOST" value="postgres"/>
+        <env name="DBPORT" value="5432"/>
+        <env name="DBNAME" value="test_neoorm"/>
+        <env name="DBUSER" value="postgres"/>
+        <env name="DBPASSWORD" value="postgres"/>
+        <env name="DBCHARSET" value="utf8mb4"/>
+        <env name="DBSCHEMA" value="public"/>
+        <env name="PATH_MODEL" value="./tests/App/Models"/>
+        <env name="MODEL_NAMESPACE" value="Tests\App\Models"/>
+        <env name="PATH_MIGRATIONS" value="./tests/Migrations"/>
+        <ini name="error_reporting" value="E_ALL"/>
+        <ini name="date.timezone" value="UTC"/>
+    </php>
+</phpunit>

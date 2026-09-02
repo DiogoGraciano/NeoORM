@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Suíte de integração contra MySQL 8. Ver phpunit-pgsql.xml para o porquê
+    de um processo por dialeto.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory=".phpunit.cache"
+         colors="true"
+         testdox="true"
+         executionOrder="random"
+         resolveDependencies="true"
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         failOnRisky="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="NEOORM_DISABLE_DOTENV" value="1"/>
+        <env name="DRIVER" value="mysql"/>
+        <env name="DBHOST" value="mysql"/>
+        <env name="DBPORT" value="3306"/>
+        <env name="DBNAME" value="test_neoorm"/>
+        <env name="DBUSER" value="root"/>
+        <env name="DBPASSWORD" value="root"/>
+        <env name="DBCHARSET" value="utf8mb4"/>
+        <env name="DBSCHEMA" value=""/>
+        <env name="PATH_MODEL" value="./tests/App/Models"/>
+        <env name="MODEL_NAMESPACE" value="Tests\App\Models"/>
+        <env name="PATH_MIGRATIONS" value="./tests/Migrations"/>
+        <ini name="error_reporting" value="E_ALL"/>
+        <ini name="date.timezone" value="UTC"/>
+    </php>
+</phpunit>

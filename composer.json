@@ -6,11 +6,14 @@
     "autoload": {
         "psr-4": {
             "Diogodg\\Neoorm\\": "src/"
-        }
+        },
+        "files": [
+            "src/Query/functions.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\":"tests"
+            "Tests\\": "tests"
         }
     },
     "authors": [
@@ -20,7 +23,69 @@
         }
     ],
     "minimum-stability": "stable",
+    "require": {
+        "php": ">=8.4",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*"
+    },
     "require-dev": {
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^12.1"
-    }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "2.0.x-dev"
+        }
+    },
+    "scripts": {
+        "test": [
+            "@test:unit",
+            "@test:pgsql",
+            "@test:mysql"
+        ],
+        "test:unit": "phpunit --configuration phpunit.xml --testsuite unit",
+        "test:integration": [
+            "@test:pgsql",
+            "@test:mysql"
+        ],
+        "test:pgsql": "phpunit --configuration phpunit-pgsql.xml --testsuite integration",
+        "test:mysql": "phpunit --configuration phpunit-mysql.xml --testsuite integration",
+        "test:query": [
+            "phpunit --configuration phpunit-pgsql.xml --group query",
+            "phpunit --configuration phpunit-mysql.xml --group query"
+        ],
+        "test:roundtrip": [
+            "phpunit --configuration phpunit-pgsql.xml --group roundtrip",
+            "phpunit --configuration phpunit-mysql.xml --group roundtrip"
+        ],
+        "test:convergence": [
+            "phpunit --configuration phpunit-pgsql.xml --group convergence",
+            "phpunit --configuration phpunit-mysql.xml --group convergence"
+        ],
+        "test:regression": [
+            "phpunit --configuration phpunit-pgsql.xml --group regression",
+            "phpunit --configuration phpunit-mysql.xml --group regression"
+        ],
+        "test:coverage": "php -d pcov.enabled=1 vendor/bin/phpunit --configuration phpunit.xml --testsuite unit --coverage-html build/coverage --coverage-clover build/clover.xml",
+        "test:snapshots": "UPDATE_SNAPSHOTS=1 phpunit --configuration phpunit.xml --testsuite unit",
+        "test:types": "phpstan analyse --configuration phpstan.neon"
+    },
+    "scripts-descriptions": {
+        "test": "Suíte completa: unitária + integração nos dois dialetos.",
+        "test:unit": "Suíte pura, sem banco nenhum. Deve rodar em poucos segundos.",
+        "test:query": "A camada de consulta contra um banco de verdade, nos dois dialetos.",
+        "test:coverage": "Cobertura da suíte pura; exige a extensão pcov (já vem na imagem).",
+        "test:roundtrip": "P3: aplica um schema, lê o banco de volta e afirma que os dois lados batem.",
+        "test:convergence": "P4: generate, up, e um segundo generate que tem que sair vazio.",
+        "test:regression": "Uma linha verde por bug conhecido do sistema antigo, nos dois dialetos.",
+        "test:snapshots": "Regrava os golden files. Revise o git diff depois.",
+        "test:types": "Análise estática. É o único lugar que verifica os genéricos: um erro de docblock não quebra teste nenhum, só degrada o tipo em silêncio."
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "bin": [
+        "bin/neoorm"
+    ]
 }

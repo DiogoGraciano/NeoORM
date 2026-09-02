@@ -3,26 +3,26 @@
 namespace Tests\App\Models;
 
 use Diogodg\Neoorm\Abstract\Model;
+use Diogodg\Neoorm\Migrations\Col;
 use Diogodg\Neoorm\Migrations\Table;
-use Diogodg\Neoorm\Migrations\Column;
+use Tests\Generated\UsersTable;
 
-class User extends Model {
+/**
+ * @extends Model<UsersTable>
+ */
+class User extends Model
+{
     public const table = "users";
 
-    public function __construct() {
-        parent::__construct(self::table,self::class);
-    }
-
-    public static function table(){
-        return (new Table(self::table, comment:"Users table"))->isAutoIncrement()
-                ->addColumn((new Column("id", "INT"))->isPrimary()->setComment("User ID"))
-                ->addColumn((new Column("name", "VARCHAR", 120))->isNotNull()->setComment("User name"))
-                ->addColumn((new Column("email", "VARCHAR", 120))->isNotNull()->isUnique()->setComment("User email"))
-                ->addColumn((new Column("phone", "VARCHAR", 20))->setComment("User phone"))
-                ->addColumn((new Column("tax_id", "VARCHAR", 20))->isUnique()->setComment("User tax ID"));
-    }
-
-    public static function seed() {
-        // Seed method intentionally left empty for tests
+    public static function table(): Table
+    {
+        return Table::make(self::table, comment: "Users table")
+            ->columns([
+                'id' => Col::id()->comment("User ID"),
+                'name' => Col::varchar(120)->notNull()->comment("User name"),
+                'email' => Col::varchar(120)->notNull()->unique()->comment("User email"),
+                'phone' => Col::varchar(20)->comment("User phone"),
+                'tax_id' => Col::varchar(20)->unique()->comment("User tax ID"),
+            ]);
     }
 }

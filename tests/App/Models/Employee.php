@@ -3,33 +3,32 @@
 namespace Tests\App\Models;
 
 use Diogodg\Neoorm\Abstract\Model;
+use Diogodg\Neoorm\Migrations\Col;
 use Diogodg\Neoorm\Migrations\Table;
-use Diogodg\Neoorm\Migrations\Column;
+use Tests\Generated\EmployeeTable;
 
-class Employee extends Model {
+/**
+ * @extends Model<EmployeeTable>
+ */
+class Employee extends Model
+{
     public const table = "employee";
 
-    public function __construct() {
-        parent::__construct(self::table,self::class);
-    }
-
-    public static function table() {
-        return (new Table(self::table, comment:"Employees table"))->isAutoIncrement()
-                ->addColumn((new Column("id", "INT"))->isPrimary()->setComment("Employee ID"))
-                ->addColumn((new Column("user_id", "INT"))->isNotNull()->setComment("User ID associated with employee"))
-                ->addForeignKey(User::table, column:"user_id")
-                ->addColumn((new Column("name", "VARCHAR", 120))->isNotNull()->setComment("Employee name"))
-                ->addColumn((new Column("tax_id", "VARCHAR", 20))->isUnique()->setComment("Employee tax ID"))
-                ->addColumn((new Column("email", "VARCHAR", 120))->isNotNull()->isUnique()->setComment("Employee email"))
-                ->addColumn((new Column("phone", "VARCHAR", 20))->setComment("Employee phone"))
-                ->addColumn((new Column("start_time", "TIME"))->isNotNull()->setComment("Employee start time"))
-                ->addColumn((new Column("end_time", "TIME"))->isNotNull()->setComment("Employee end time"))
-                ->addColumn((new Column("lunch_start", "TIME"))->setComment("Employee lunch start time"))
-                ->addColumn((new Column("lunch_end", "TIME"))->setComment("Employee lunch end time"))
-                ->addColumn((new Column("days", "VARCHAR", 20))->isNotNull()->setComment("Working days (comma separated)"));
-    }
-
-    public static function seed() {
-        // Seed method intentionally left empty for tests
+    public static function table(): Table
+    {
+        return Table::make(self::table, comment: "Employees table")
+            ->columns([
+                'id' => Col::id()->comment("Employee ID"),
+                'user_id' => Col::int()->notNull()->references(User::class)->comment("User ID associated with employee"),
+                'name' => Col::varchar(120)->notNull()->comment("Employee name"),
+                'tax_id' => Col::varchar(20)->unique()->comment("Employee tax ID"),
+                'email' => Col::varchar(120)->notNull()->unique()->comment("Employee email"),
+                'phone' => Col::varchar(20)->comment("Employee phone"),
+                'start_time' => Col::time()->notNull()->comment("Employee start time"),
+                'end_time' => Col::time()->notNull()->comment("Employee end time"),
+                'lunch_start' => Col::time()->comment("Employee lunch start time"),
+                'lunch_end' => Col::time()->comment("Employee lunch end time"),
+                'days' => Col::varchar(20)->notNull()->comment("Working days (comma separated)"),
+            ]);
     }
 }

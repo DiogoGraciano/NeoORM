@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Diogodg\Neoorm;
 
+use Diogodg\Neoorm\Transaction\TransactionRegistry;
 use Exception;
 use PDO;
 use PDOException;
@@ -9,34 +12,16 @@ use PDOException;
 /**
  * Classe para configuração e obtenção da conexão com o banco de dados.
  */
-class Connection
+final class Connection
 {
-    /**
-     * Instância do objeto PDO para a conexão com o banco de dados.
-     *
-     * @var PDO|null
-     */
-    private static $pdo = null;
+    private static ?PDO $pdo = null;
 
     /**
      * connection constructor.
      * Privado para impedir a criação direta de instâncias (Singleton).
      */
-    private function __construct() {}
-
-    /**
-     * Impede a clonagem da instância.
-     */
-    private function __clone() {}
-
-    /**
-     * Impede a desserialização da instância.
-     *
-     * @throws \Exception
-     */
-    public function __wakeup()
+    private function __construct()
     {
-        throw new \Exception("Cannot unserialize singleton");
     }
 
     /**
@@ -50,80 +35,30 @@ class Connection
     {
         if (self::$pdo === null) {
             try {
-                if (Config::getDriver() == "mysql") {
-                    $dsn = sprintf(
-                        Config::getDriver() . ':host=%s;port=%s;dbname=%s;charset=%s',
-                        Config::getHost(),
-                        Config::getPort(),
-                        Config::getDbName(),
-                        Config::getCharset()
-                    );
-                } else {
-                    $dsn = sprintf(
-                        Config::getDriver() . ':host=%s;port=%s;dbname=%s',
-                        Config::getHost(),
-                        Config::getPort(),
-                        Config::getDbName()
-                    );
-                }
-                self::$pdo = new PDO($dsn, Config::getUser(), Config::getPassword(), [
-                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                    // Sem emulação o driver envia os parâmetros separados da query,
-                    // e os tipos declarados no bind são de fato respeitados.
-                    PDO::ATTR_EMULATE_PREPARES   => false,
-                    PDO::ATTR_STRINGIFY_FETCHES  => false,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                ]);
+                // DatabaseConfig é a única fronteira que conhece DSN e opções do PDO.
+                // Duplicar essa montagem aqui já fez a conexão compartilhada divergir
+                // das conexões explícitas uma vez.
+                self::$pdo = DatabaseConfig::fromConfig()->connect();
             } catch (PDOException $e) {
                 // A mensagem original pode conter host/usuário; mantém genérica para
                 // quem chama, mas preserva o original encadeado para o log.
-                throw new Exception("Erro ao conectar ao banco de dados", 0, $e);
+                throw new Exception('Erro ao conectar ao banco de dados', 0, $e);
             }
         }
 
         return self::$pdo;
     }
 
-    public static function beginTransaction(): void
+    /**
+     * Indica se a conexão compartilhada já foi aberta.
+     *
+     * Existe para a suíte unitária poder afirmar que nenhum teste puro abriu
+     * socket: definir schema, gerar snapshot e diferenciar não podem depender
+     * de banco, e a única forma de garantir isso é verificar.
+     */
+    public static function isOpen(): bool
     {
-        try {
-            if (self::$pdo === null) {
-                self::$pdo = self::getConnection();
-            }
-
-            if (!self::$pdo->inTransaction()) {
-                self::$pdo->beginTransaction();
-            }
-        } catch (\PDOException $e) {
-            throw new Exception("Erro ao iniciar a transação: " . $e->getMessage());
-        }
-    }
-
-    public static function commit(): void
-    {
-        try {
-            if (self::$pdo !== null && self::$pdo->inTransaction()) {
-                self::$pdo->commit();
-            }
-        } catch (PDOException $e) {
-            throw new Exception("Erro ao confirmar a transação: " . $e->getMessage(), 0, $e);
-        }
-    }
-
-    public static function rollBack(): void
-    {
-        try {
-            if (self::$pdo !== null && self::$pdo->inTransaction()) {
-                self::$pdo->rollBack();
-            }
-        } catch (PDOException $e) {
-            throw new Exception("Erro ao desfazer a transação: " . $e->getMessage(), 0, $e);
-        }
-    }
-
-    public static function inTransaction(): bool
-    {
-        return self::$pdo ? self::$pdo->inTransaction() : false;
+        return self::$pdo !== null;
     }
 
     /**
@@ -137,6 +72,12 @@ class Connection
     {
         if (self::$pdo !== null && self::$pdo->inTransaction()) {
             self::$pdo->rollBack();
+        }
+
+        if (self::$pdo !== null) {
+            // O controle de transação guarda a profundidade dos savepoints; uma sessão
+            // nova precisa começar em zero.
+            TransactionRegistry::flush(self::$pdo);
         }
 
         self::$pdo = null;
