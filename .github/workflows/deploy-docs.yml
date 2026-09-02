@@ -13,6 +13,11 @@ permissions:
   pages: write
   id-token: write
 
+# Mantém o runtime das JavaScript Actions em Node 24 mesmo durante a transição
+# dos runners do GitHub.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: github-pages
   cancel-in-progress: false
