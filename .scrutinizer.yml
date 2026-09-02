@@ -1,0 +1,5 @@
+build:
+  # PHP 8.4 requer libxml >= 2.9.4; a imagem padrão antiga tem 2.9.1.
+  image: default-jammy
+  environment:
+    php: 8.4.12
